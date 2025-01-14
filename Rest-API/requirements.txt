@@ -1,0 +1,15 @@
+fastapi
+pandas
+uvicorn
+faker
+google-cloud-storage
+fsspec
+gcsfs
+smart_open
+sqlalchemy
+psycopg2
+pg8000
+cloud-sql-python-connector
+google-auth 
+google-auth-oauthlib
+google-auth-httplib2

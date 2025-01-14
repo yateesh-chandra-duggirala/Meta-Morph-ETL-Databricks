@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "ece-data-eng-project",
+  "private_key_id": "8f32aea88058601737943d653285fc5446666590",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCv3priOIWu/O98\n7cEedZQd5CbXWnNyahxvc3qsWdHCpohkiN9/VJ6FcT6BqQLVGG3sLnLMpVsy3NkH\nqr3GBPE66TzLeGbmHP/n2nV7wgdoaCc3Jy5QCP9zPWNPlz5QEeq2XciG/uREa0oV\np6AFEU8wiffZJFaM2OGbDcrXKtmVjuNvyXp6x6k7oEQ34V5bJeO4700J3gTcm0fJ\nxQreCn1yOTsxCkyuxB2kkg5ouPFPY1jLOnaeaHA6wlHIg/g07epptXgjigGdfBa/\n30t4Coo3LTKB4b/3d0bZ6ZjyjjN5/6Qc6ArObnPntak/K2OIlRwvNaoWwwDqghGK\nMSuAOmfpAgMBAAECgf8fAN8pMENrHXip+3MSkfSNHT1LBmcG6uYx/QhOuyqoRzNY\nrr4oVYzFeXt5g+4dLR9m4i+7/YlBx8at/EpKG8MEjbgsgpoHn/FJ4XQM5NMm7lQ4\n52UXLKfbz1A6RIFEeHN6CcGaSDEjlu9XOPrRMZB05xDM4lXvCL11Kgs0TtHUb0bY\nOdNujnFu7qE/ZAdBkTFX+j1pZb085JuWqeiP0ZE+t+DADb+WIP5ZeMN5RDYatVY9\nCCORyzEBB+oU4s1k/3ykuhMtuYDikYfGcQnsifVms5wxjRYfkWLQTr5mFuvppTlm\n1Pu3A+iuQK1yOtJm8ArcWO6EIKxMtb6dntMntLUCgYEA5TqKZGpy5Tv/jht3Z2pn\nrSZ/iczhrtG1mVA6pfzhc9AdaE3iEEogYDQgc6ZScX7sgjlXRGlBmtzAZlWXpew5\nkf6xUn2njFUwHZIJy1IAlzKNPFt9ZOxbKH978cFqDFI4ffYcoIF9J5/9FG5JrlCn\nxEK2fQmY6NSHHP9nFiJCG6UCgYEAxGi85jNfvfy0fYAwlO/5cMRo73z8nVDiIfVO\nZWplDrfNacjT1kmKYkqUBOr1au9hjzps03gvgdL2Er7DOvekgtcOXeNgi83fiotr\nWIXq2W9ESVYXNbF1sPpt5Pxs0N0zrnptynebraSvO1343M1JYeqgO5wdgX8TJxvd\nFVX3t/UCgYEAxqfBH90QzZD9nE45YKpaRzjB9s5UF4kudDuPWCKb0B5gHfDBJZTY\nEgeayB8v+6Qfm4vOET+W13rQUt+CmQzrp5auXer/tSJunHHfgxEB6gapV9GCDmC3\nb5Vr+MvB+AOZabBMht0xdZG1Zmtd9292tSOLuzkCB2WH4p2E3S27VPECgYBGOtVg\n0vnnK1c2kQHOH8jnw7Np/x0s+2EAl4CCzvp3us1eiAsHUqCC6PvojkNXC2WtG00S\niKUkHNUUetXAXhCbIF7ov4ckNmc6WQP3UVtaiGi4eGowLtZQhBuLh585R/9U4j4j\n6YTnID3wUnfMLDOTKZxF9FqwlUm58EKrgGPliQKBgQDYcsf0A/mmZxxhco73OnOy\nsvYYi/xIaa656s3w7PaXk89Vade0C1hKeAicsed21m+p8CtvUZu3la+43Fpff8Ko\n2mThhU6EP9iWRqmEAv/NpwHXCTg9Z2JF5VVJvT6+ksexEmI8ngcHSMOMN34C9a3C\n/pU8WAJzM4fpenAEmaga0A==\n-----END PRIVATE KEY-----\n",
+  "client_email": "yateesh-chandra@ece-data-eng-project.iam.gserviceaccount.com",
+  "client_id": "117498061802800584509",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/yateesh-chandra%40ece-data-eng-project.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

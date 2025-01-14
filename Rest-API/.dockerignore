@@ -1,0 +1,10 @@
+env/
+__pycache__/
+
+*.env
+*.env.*
+env.*
+
+Backend/
+pg_test/
+main.py
