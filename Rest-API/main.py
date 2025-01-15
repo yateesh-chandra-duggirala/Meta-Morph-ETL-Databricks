@@ -1,5 +1,4 @@
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 import pandas as pd
 from os import environ as env
 import random
@@ -138,6 +137,7 @@ def files_check():
     server_ready = False
 
     for blob in blobs:
+        print("entering loop")
         if blob.name.split("/")[0] == today:
             server_ready = True
             break
@@ -158,7 +158,7 @@ async def startup_event():
 
 @app.get("/")
 async def do_wish():
-    return {"status" : 200, "message" : f"You are accessing Production environment"}
+    return {"status" : 200, "message" : f"You are accessing {env['MY_VARIABLE']} environment"}
 
 
 # suppliers API to fetch the latest supplier data from the meta-morph bucket
@@ -221,7 +221,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Running the server
-if __name__ == "__main__":
-    uvicorn.run(app, port=8083)

@@ -7,8 +7,6 @@ fsspec
 gcsfs
 smart_open
 sqlalchemy
-psycopg2
-pg8000
 cloud-sql-python-connector
 google-auth 
 google-auth-oauthlib
