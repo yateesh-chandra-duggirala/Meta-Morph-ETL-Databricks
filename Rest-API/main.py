@@ -1,4 +1,5 @@
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 import pandas as pd
 from os import environ as env
 import random
@@ -137,7 +138,6 @@ def files_check():
     server_ready = False
 
     for blob in blobs:
-        print("entering loop")
         if blob.name.split("/")[0] == today:
             server_ready = True
             break
@@ -197,7 +197,7 @@ async def load_sales_data():
                         }
                     ).set_index("sale_id")
 
-    sales_result = df.reset_index().to_dict(orient="records")
+    sales_result = df.where(pd.notnull(df), None).reset_index().to_dict(orient="records")
     return {"status" : 200, "data" : sales_result}
 
 # customers API to fetch the latest customer data from the meta-morph bucket
