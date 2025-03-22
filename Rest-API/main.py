@@ -11,7 +11,7 @@ from fastapi import FastAPI
 
 today = datetime.now().strftime("%Y%m%d")
 print(today)
-key_path = "ece-data-eng-service-creds.json"
+key_path = "meta-morph-d-eng-pro-admin.json"
 
 app = FastAPI()
 fake = Faker()

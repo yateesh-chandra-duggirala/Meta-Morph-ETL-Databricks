@@ -1,0 +1,94 @@
+- Download and Install Docker for your windows. After Installation sign in with your Account.
+- Download astro.exe for making the airflow setup ready (Remember to keep the file which is accessible by System - In Path Variables)
+- Once Above is done, Go to the Folder where you want to do all this Development stuff
+- Setup the Airflow Directory and initialising the development by running : astro dev init
+- From there create a new file with name docker-compose.override.yml paste the Spark Master and worker services there. Provide the JARs also in the class path
+# docker-compose.override.yml
+
+services:
+
+  spark-master:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_MASTER_WEBUI_PORT=8081
+      - SPARK_CLASSPATH=/usr/local/airflow/jars/postgresql-42.7.1.jar
+      - SPARK_DRIVER_CLASSPATH=/usr/local/airflow/jars/postgresql-42.7.1.jar
+      - SPARK_EXECUTOR_CLASSPATH=/usr/local/airflow/jars/postgresql-42.7.1.jar
+    ports:
+      - "8081:8081"
+      - "7077:7077"
+    volumes:
+      - spark-data:/bitnami
+      - ./include:/usr/local/airflow/include
+      - ./apps:/opt/spark-apps
+      - ./data:/opt/spark-data
+      - ./jars:/usr/local/airflow/jars
+    networks:
+      - airflow
+
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_CLASSPATH=/usr/local/airflow/jars/postgresql-42.7.1.jar
+      - SPARK_DRIVER_CLASSPATH=/usr/local/airflow/jars/postgresql-42.7.1.jar
+      - SPARK_EXECUTOR_CLASSPATH=/usr/local/airflow/jars/postgresql-42.7.1.jar
+    volumes:
+      - ./include:/usr/local/airflow/include
+      - spark-data:/bitnami
+      - ./apps:/opt/spark-apps
+      - ./jars:/usr/local/airflow/jars
+      - ./data:/opt/spark-data
+    depends_on:
+      - spark-master
+    networks:
+      - airflow
+
+volumes:
+  spark-data:
+  
+- Open Dockerfile and edit it with the commands to run : 
+
+FROM quay.io/astronomer/astro-runtime:12.7.1
+
+USER root
+
+# Install OpenJDK-17
+RUN apt update && \
+    apt-get install -y openjdk-17-jdk && \
+    apt-get install -y ant && \
+    apt-get clean;
+
+# Set JAVA_HOME
+# ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64/
+# RUN export JAVA_HOME
+ENV JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+USER astro
+
+- Once we get these ready, Create a new folder (scripts) under the include folder in order to work on spark Scripts
+- Run the Astro Docker containers by using : astro dev start
+- If it does not start, Try restarting your Lappy.
+- Create your Dags under DAGs Directory
+- Add the below libraries under requirements.txt
+	apache-airflow-providers-common-compat==1.2.2
+	apache-airflow-providers-apache-spark==4.11.3
+- Once you feel you are done, Restart astro again : astro dev restart
+- Go to browser and browse as : http://localhost:8080 ( For Airflow) It takes a lot of time to build the image and start container. However once it starts Use username : admin/airflow and password : admin/airflow.
+- From Connections in Airflow UI, Try to add spark connection : 
+- Also add Postgres Connection, If you want to work on Postgres : 
+
+- Some times, You may get an issue with the Postgres container when you run astro dev. Then from docker, retry by restarting, It works. Also Restart all the stopped connections.
