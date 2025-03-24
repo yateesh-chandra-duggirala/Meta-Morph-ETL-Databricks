@@ -9,7 +9,8 @@ from google.cloud import storage
 import io
 from fastapi import FastAPI
 
-today = datetime.now().strftime("%Y%m%d")
+# today = datetime.now().strftime("%Y%m%d")
+today = "20250323"
 print(today)
 key_path = "meta-morph-d-eng-pro-admin.json"
 
