@@ -11,3 +11,6 @@ cloud-sql-python-connector
 google-auth 
 google-auth-oauthlib
 google-auth-httplib2
+apache-airflow
+apache-airflow-providers-postgres
+apache-airflow-providers-apache-spark
