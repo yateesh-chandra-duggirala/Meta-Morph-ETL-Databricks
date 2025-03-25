@@ -188,19 +188,6 @@ async def load_products_data():
     product_result = df.reset_index().to_dict(orient="records")
     return {"status" : 200, "data" : product_result}
 
-# sales API to fetch the latest sales data from the meta-morph bucket
-@app.get("/v1/sales")
-async def load_sales_data():
-
-    df = pd.read_csv(f"gs://meta-morph/{today}/sales_{today}.csv", 
-                        storage_options={
-                            "token": key_path
-                        }
-                    ).set_index("sale_id")
-
-    sales_result = df.where(pd.notnull(df), None).reset_index().to_dict(orient="records")
-    return {"status" : 200, "data" : sales_result}
-
 # customers API to fetch the latest customer data from the meta-morph bucket
 @app.get("/v1/customers")
 async def load_customer_data():
