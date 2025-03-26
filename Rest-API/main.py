@@ -10,12 +10,12 @@ import io
 from fastapi import FastAPI
 
 # today = datetime.now().strftime("%Y%m%d")
-today = "20250323"
+today = "20250326"
 print(today)
 key_path = "meta-morph-d-eng-pro-admin.json"
 
 app = FastAPI()
-fake = Faker()
+fake = Faker("en_IN")
 
 async def gs_bucket_auth_save(sample, type_of_data):
     csv_buffer = io.BytesIO()
@@ -91,7 +91,6 @@ async def generate_data():
             "city": fake.city(),
             "email": name.lower().replace(" ", "") + "@" + random.choice(["yahoo.com", "gmail.com", "outlook.com"]),
             "phone_number": fake.phone_number(),
-            "loyalty_tier": random.choice(["Bronze", "Silver", "Gold", "Platinum"]),
         }
         for customer_id in customer_ids
     ]
