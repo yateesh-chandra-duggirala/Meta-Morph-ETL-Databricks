@@ -7,15 +7,45 @@ from faker import Faker
 from datetime import datetime
 from google.cloud import storage
 import io
-from fastapi import FastAPI
+from typing import Annotated
+from sqlalchemy.orm import Session
+from database import SessionLocal
+from fastapi import FastAPI, Depends
 
 # today = datetime.now().strftime("%Y%m%d")
-today = "20250326"
+today = "20250328"
 print(today)
 key_path = "meta-morph-d-eng-pro-admin.json"
 
 app = FastAPI()
 fake = Faker("en_IN")
+
+def get_data(relation, cnt):
+    import psycopg2
+
+    # Establish a connection with the postgres
+    conn = psycopg2.connect(
+        database = 'meta_morph',
+        user = 'postgres',
+        password = 'postgres',
+        host = 'localhost',
+        port = '5432'
+    )
+
+    # Create a cursor Object
+    cursor = conn.cursor()
+
+    # Define a SQL Query with Insertion statements.
+    get_sql = f'''
+                select * from server.{relation}
+                LIMIT {cnt}
+                '''
+
+    # Execute the Query with the help of the cursor object.
+    cursor.execute(get_sql)
+    result = cursor.fetchall()
+    conn.close()
+    return result
 
 async def gs_bucket_auth_save(sample, type_of_data):
     csv_buffer = io.BytesIO()
@@ -37,43 +67,42 @@ async def gs_bucket_auth_save(sample, type_of_data):
 
 async def generate_data():
 
-    NUM_SUPPLIERS_SAMPLE = random.randint(500,700)
-    NUM_PRODUCTS_SAMPLE = random.randint(5000,8000)
+    NUM_SUPPLIERS_SAMPLE = 252
+    NUM_PRODUCTS_SAMPLE = random.randint(400,480)
     NUM_CUSTOMERS_SAMPLE = random.randint(15000,30000)
     NUM_SALES_SAMPLE = random.randint(200000,400000)
 
     # Generate Suppliers Data (Sample)
     print("Supplier Data Generation in progress....")
-    suppliers_ids = [f"S{str(i).zfill(4)}" for i in range(1, NUM_SUPPLIERS_SAMPLE + 1)]
-    random.shuffle(suppliers_ids)
+    suppliers_from_db = get_data("supplier",NUM_SUPPLIERS_SAMPLE)
+
     suppliers_sample = [
         {
-            "supplier_id": suppliers_id,
-            "supplier_name": fake.company(),
-            "contact_details": fake.phone_number(),
-            "region": random.choice(["North", "South", "East", "West", "Central"]),
+            "supplier_id": row[0],
+            "supplier_name": row[1],
+            "contact_details": row[2],
+            "region": row[3],
         }
-        for suppliers_id in suppliers_ids
+        for row in suppliers_from_db[:NUM_SUPPLIERS_SAMPLE]
     ]
     print(f"*-*-*-*- Supplier Dataset Generated with : {NUM_SUPPLIERS_SAMPLE} records -*-*-*-*-*")
     await gs_bucket_auth_save(suppliers_sample, "supplier")
 
     # Generate Products Data (Sample)
     print("Products Data Generation in progress....")
-    products_ids = [f"P{str(i).zfill(5)}" for i in range(1, NUM_PRODUCTS_SAMPLE + 1)]
-    random.shuffle(products_ids) 
+    products_from_db = get_data("product",NUM_PRODUCTS_SAMPLE)
 
     products_sample = [
         {
-            "product_id": product_id, 
-            "product_name": f"Product {chr(65 + (i % 26))}{i}",
-            "category": random.choice(["Electronics", "Apparel", "Home", "Books", "Toys"]),
+            "product_id": row[0],
+            "product_name": row[1],
+            "category": row[2],
             "price": round(random.uniform(5, 1000), 2),
             "stock_quantity": random.randint(50, 1000),
             "reorder_level": random.randint(10, 50),
             "supplier_id": f"S{str(random.randint(1, NUM_SUPPLIERS_SAMPLE)).zfill(4)}",
         }
-        for i, product_id in enumerate(products_ids, start=1)
+        for row in products_from_db[:NUM_PRODUCTS_SAMPLE]
     ]
 
     print(f"*-*-*-*- Products Dataset Generated with : {NUM_PRODUCTS_SAMPLE} records -*-*-*-*-*")
