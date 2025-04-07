@@ -116,7 +116,7 @@ async def generate_data():
             "name": (name := fake.name()),
             "city": fake.city(),
             "email": name.lower().replace(" ", "") + "@" + random.choice(["yahoo.com", "gmail.com", "outlook.com"]),
-            "phone_number": fake.phone_number(),
+            "phone_number": str(random.choice([6, 7, 8, 9])) + ''.join(str(random.randint(0, 9)) for _ in range(9)),
         }
         for customer_id in customer_ids
     ]
