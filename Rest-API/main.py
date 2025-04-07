@@ -1,5 +1,4 @@
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 import pandas as pd
 from os import environ as env
 import random
@@ -7,10 +6,8 @@ from faker import Faker
 from datetime import datetime
 from google.cloud import storage
 import io
-from typing import Annotated
-from sqlalchemy.orm import Session
-from database import SessionLocal
 from fastapi import FastAPI, Depends
+from auth_utils import *
 
 # today = datetime.now().strftime("%Y%m%d")
 today = "20250328"
@@ -189,6 +186,11 @@ async def startup_event():
 async def do_wish():
     return {"status" : 200, "message" : f"You are accessing {env['MY_VARIABLE']} environment"}
 
+@app.get("/v1/token")
+def generate_token():
+    data = {"sub": "email"} 
+    token = create_access_token(data)
+    return {"access_token": token}
 
 # suppliers API to fetch the latest supplier data from the meta-morph bucket
 @app.get("/v1/suppliers")
@@ -218,16 +220,14 @@ async def load_products_data():
 
 # customers API to fetch the latest customer data from the meta-morph bucket
 @app.get("/v1/customers")
-async def load_customer_data():
-
-    df = pd.read_csv(f"gs://meta-morph/{today}/customer_{today}.csv", 
-                        storage_options={
-                            "token": key_path
-                        }
-                    ).set_index("customer_id")
+async def load_customer_data(payload: dict = Depends(verify_token)):
+    df = pd.read_csv(
+        f"gs://meta-morph/{today}/customer_{today}.csv",
+        storage_options={"token": key_path}
+    ).set_index("customer_id")
 
     customer_result = df.reset_index().to_dict(orient="records")
-    return {"status" : 200, "data" : customer_result}
+    return {"status": 200, "data": customer_result}
 
 # Setting up the Cors Origin
 app.add_middleware(
