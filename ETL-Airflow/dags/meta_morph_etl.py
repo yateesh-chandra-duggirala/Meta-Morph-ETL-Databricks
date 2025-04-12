@@ -1,7 +1,6 @@
 # Import Libraries
 from airflow.decorators import dag
 from datetime import datetime
-from utils import APIClient
 from tasks.ingestion_tasks import (
     supplier_data_ingestion,
     customer_data_ingestion,
@@ -17,28 +16,20 @@ from tasks.ingestion_tasks import (
     catchup=False,
 )
 def ingestion():
-    #  Create an object for the APIClient Class
-    client = APIClient()
 
-    # Make a function call for the Suppliers API
-    api = "suppliers"
-    response = client.fetch_data(api)
-    suppliers = supplier_data_ingestion(api, response)
+    # Make a function call for the Suppliers task
+    suppliers = supplier_data_ingestion()
 
-    # Make a function call for the Customer API
-    api = "customers"
-    response = client.fetch_data(api, True)
-    customers = customer_data_ingestion(api, response)
+    # Make a function call for the Customer task
+    customers = customer_data_ingestion()
     
-    # Make a function call for the Products API
-    api = "products"
-    response = client.fetch_data(api)
-    products = products_data_ingestion(api, response)
+    # Make a function call for the Products task
+    products = products_data_ingestion()
 
-    # Make a function call for the Sales API
-    sales = sales_data_ingestion("sales")
+    # Make a function call for the Sales task
+    sales = sales_data_ingestion()
 
-    # Set the Task Dependency
+    # Set the Tasks Dependency
     [suppliers, customers, products, sales]
 
 # Call the Ingestion Dag Function

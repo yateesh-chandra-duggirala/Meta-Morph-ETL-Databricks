@@ -2,14 +2,21 @@
 from airflow.decorators import task
 from pyspark.sql import Row, SparkSession
 import logging
-from utils import get_spark_session, load_into_table, abort_session
+from utils import get_spark_session, write_into_table, abort_session, APIClient
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="ingest_data_into_suppliers")
-def supplier_data_ingestion(api, response):
+def supplier_data_ingestion():
     
+    # Create an object for the Suppliers API Client Class
+    client = APIClient()
+
     # Get a spark session
     spark = get_spark_session()
+    
+    # Set the Suppliers value to fetch the data
+    api = "suppliers"
+    response = client.fetch_data(api)
 
     # Create a data frame from the response of the API
     suppliers_df = spark.createDataFrame(Row(**x) for x in response['data'])
@@ -23,7 +30,7 @@ def supplier_data_ingestion(api, response):
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
-    load_into_table(api, suppliers_df)
+    write_into_table(api, suppliers_df, "raw", "overwrite")
 
     # Abort the session when Done.
     abort_session(spark)
@@ -31,10 +38,17 @@ def supplier_data_ingestion(api, response):
 
 # Create a task that helps in ingesting the data into Customers
 @task(task_id="ingest_data_into_customers")
-def customer_data_ingestion(api, response):
+def customer_data_ingestion():
     
-    # Get a Spark Session
+    # Create an object for the Suppliers API Client Class
+    client = APIClient()
+
+    # Get a spark session
     spark = get_spark_session()
+    
+    # Set the Customers value to fetch the data
+    api = "customer"
+    response = client.fetch_data(api, True)
 
     # Create a data frame from the response of the API
     customer_df = spark.createDataFrame(Row(**x) for x in response['data'])
@@ -49,7 +63,7 @@ def customer_data_ingestion(api, response):
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
-    load_into_table(api, customer_df)
+    write_into_table(api, customer_df, "raw", "overwrite")
     
     # Abort the session when Done
     abort_session(spark)
@@ -57,10 +71,17 @@ def customer_data_ingestion(api, response):
 
 # Create a task that helps in ingesting the data into Products
 @task(task_id="ingest_data_into_products")
-def products_data_ingestion(api, response):
+def products_data_ingestion():
+
+    # Create an object for the Suppliers API Client Class
+    client = APIClient()
 
     # Get a spark session
     spark = get_spark_session()
+    
+    # Set the Products value to fetch the data
+    api = "products"
+    response = client.fetch_data(api)
     
     # Create a data frame from the response of the API
     product_df = spark.createDataFrame(Row(**x) for x in response['data'])
@@ -77,7 +98,7 @@ def products_data_ingestion(api, response):
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
-    load_into_table(api, product_df)
+    write_into_table(api, product_df, "raw", "overwrite")
     
     # Abort the session once Done
     abort_session(spark)
@@ -85,7 +106,7 @@ def products_data_ingestion(api, response):
 
 # Create a task that helps the data in ingesting the data into sales
 @task(task_id="ingest_data_into_sales")
-def sales_data_ingestion(api):
+def sales_data_ingestion():
 
     # Create a spark session with the hadoop configurations and also authentic credentials
     spark = SparkSession.builder.appName("GCS_to_Postgres") \
@@ -98,6 +119,8 @@ def sales_data_ingestion(api):
     # Create a data frame by reading the CSV from the Google Bucket
     sales_df = spark.read.csv('gs://meta-morph/20250330/sales_20250330.csv', header=True, inferSchema=True)
     
+    api = "sales"
+    logging.info("Reading the CSV File into dataframe...")
     # Do the Transformation for the Sales Dataframe
     sales_df = sales_df\
         .withColumnRenamed(sales_df.columns[0], "sale_id")\
@@ -109,9 +132,10 @@ def sales_data_ingestion(api):
         .withColumnRenamed(sales_df.columns[6], "shipping_cost")\
         .withColumnRenamed(sales_df.columns[7], "order_status")\
         .withColumnRenamed(sales_df.columns[8], "payment_mode")
+    logging.info(f"Writing into table: {api}")
 
     # Load the data into the Table
-    load_into_table(api, sales_df)
+    write_into_table(api, sales_df, "raw", "overwrite")
 
     # abort the session after Done
     abort_session(spark)

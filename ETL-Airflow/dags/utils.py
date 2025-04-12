@@ -1,7 +1,5 @@
-from airflow.decorators import task, dag
 import logging
-from pyspark.sql import SparkSession, Row
-
+from pyspark.sql import SparkSession
 
 class APIClient:
     
@@ -11,15 +9,19 @@ class APIClient:
     def fetch_data(self, api_type: str, auth=False):
         import requests
         if auth : 
-            token = requests.get(url + "/token").json()['access_token']
-            response = requests.get(url + "/customers", headers={"Authorization": f"Bearer {token}"})
+            logging.info("Generating Token...")
+            token = requests.get(self.base_url + "/token").json()['access_token']
+            logging.info(f"The token is generated and fetching the response from {api_type} API")
+            response = requests.get(self.base_url + "/customers", headers={"Authorization": f"Bearer {token}"})
         else : 
-            url = f"{self.base_url}/{api_type}"
-            response = requests.get(url)
+            logging.info(f"Fetching the response from {api_type} API")
+            response = requests.get(self.base_url + "/" + api_type)
 
         if response.status_code == 200:
+            logging.info("Succcessfully retrieved response from API")
             return response.json()
         else:
+            logging.error("Exception raised..!")
             raise Exception(f"Failed to fetch data, status code: {response.status_code}")
 
 
@@ -32,13 +34,13 @@ def get_spark_session() :
     logging.info("Spark session Created")
     return spark
 
-def load_into_table(api, data_frame):
+def write_into_table(api, data_frame, schema, strategy):
     df = data_frame.write \
     .format("jdbc") \
     .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
-    .option("driver", "org.postgresql.Driver").option("dbtable", f"dummy.{api}") \
+    .option("driver", "org.postgresql.Driver").option("dbtable", f"{schema}.{api}") \
     .option("user", "postgres").option("password", "postgres") \
-    .mode("overwrite") \
+    .mode(strategy) \
     .save()
 
     logging.info(f"Successfully Written {data_frame.count()} records into Table : {api}")
