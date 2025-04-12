@@ -8,10 +8,14 @@ class APIClient:
     def __init__(self, base_url="http://host.docker.internal:8000/v1"):
         self.base_url = base_url
 
-    def fetch_data(self, api_type: str):
+    def fetch_data(self, api_type: str, auth=False):
         import requests
-        url = f"{self.base_url}/{api_type}"
-        response = requests.get(url)
+        if auth : 
+            token = requests.get(url + "/token").json()['access_token']
+            response = requests.get(url + "/customers", headers={"Authorization": f"Bearer {token}"})
+        else : 
+            url = f"{self.base_url}/{api_type}"
+            response = requests.get(url)
 
         if response.status_code == 200:
             return response.json()
@@ -32,7 +36,7 @@ def load_into_table(api, data_frame):
     df = data_frame.write \
     .format("jdbc") \
     .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
-    .option("driver", "org.postgresql.Driver").option("dbtable", f"raw.{api}") \
+    .option("driver", "org.postgresql.Driver").option("dbtable", f"dummy.{api}") \
     .option("user", "postgres").option("password", "postgres") \
     .mode("overwrite") \
     .save()
