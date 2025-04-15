@@ -34,6 +34,18 @@ def get_spark_session() :
     logging.info("Spark session Created")
     return spark
 
+def read_data(spark,table) :
+
+    df = spark.read.format("jdbc")\
+        .option("url", "jdbc:postgresql://localhost:5432/meta_morph")\
+        .option("user", "postgres")\
+        .option("password", "postgres")\
+        .option("driver", "org.postgresql.Driver")\
+        .option("dbtable", table)\
+        .load()
+    
+    return df
+
 def write_into_table(api, data_frame, schema, strategy):
     df = data_frame.write \
     .format("jdbc") \
