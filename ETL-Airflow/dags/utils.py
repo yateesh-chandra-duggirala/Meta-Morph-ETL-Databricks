@@ -1,7 +1,7 @@
-from airflow.decorators import task, dag
 import logging
-from pyspark.sql import SparkSession, Row
+from pyspark.sql import SparkSession
 
+logging.basicConfig(level=logging.INFO)
 
 class APIClient:
     
@@ -9,19 +9,24 @@ class APIClient:
         self.base_url = base_url
 
     def fetch_data(self, api_type: str, auth=False):
-        import requests
-        if auth : 
-            token = requests.get(url + "/token").json()['access_token']
-            response = requests.get(url + "/customers", headers={"Authorization": f"Bearer {token}"})
-        else : 
-            url = f"{self.base_url}/{api_type}"
-            response = requests.get(url)
+        try :
+            import requests
+            if auth : 
+                logging.info("Generating Token...")
+                token = requests.get(self.base_url + "/token").json()['access_token']
+                logging.info(f"The token is generated and fetching the response from {api_type} API")
+                response = requests.get(self.base_url + "/customers", headers={"Authorization": f"Bearer {token}"})
+            else : 
+                logging.info(f"Fetching the response from {api_type} API")
+                response = requests.get(self.base_url + "/" + api_type)
 
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Failed to fetch data, status code: {response.status_code}")
-
+            if response.status_code == 200:
+                logging.info("Succcessfully retrieved response from API")
+                return response.json()
+                
+        except Exception as e:
+            logging.error("Exception raised..!")
+            raise e
 
 def get_spark_session() :
 
@@ -32,16 +37,39 @@ def get_spark_session() :
     logging.info("Spark session Created")
     return spark
 
-def load_into_table(api, data_frame):
-    df = data_frame.write \
-    .format("jdbc") \
-    .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
-    .option("driver", "org.postgresql.Driver").option("dbtable", f"dummy.{api}") \
-    .option("user", "postgres").option("password", "postgres") \
-    .mode("overwrite") \
-    .save()
+def read_data(spark, table) :
 
-    logging.info(f"Successfully Written {data_frame.count()} records into Table : {api}")
+    try :
+        logging.info("Connecting to PostgreSQL database using JDBC driver...")
+        df = spark.read.format("jdbc")\
+            .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph")\
+            .option("user", "postgres")\
+            .option("password", "postgres")\
+            .option("driver", "org.postgresql.Driver")\
+            .option("dbtable", table)\
+            .load()
+        logging.info(f"Retrieved Data from the {table}..")
+    except Exception as e:
+        logging.error("An Exception occurred")
+        raise e
+    return df
+
+def write_into_table(table, data_frame, schema, strategy):
+
+    try : 
+        logging.info("Connecting to PostgreSQL database using JDBC driver...")
+        df = data_frame.write.format("jdbc")\
+            .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
+            .option("driver", "org.postgresql.Driver") \
+            .option("dbtable", f"{schema}.{table}") \
+            .option("user", "postgres") \
+            .option("password", "postgres") \
+            .mode(strategy) \
+            .save()
+        logging.info(f"Successfully Written {data_frame.count()} records into Table : {table}")
+    except Exception as e:
+        logging.error("An Exception occurred")
+        raise e
     return df
 
 def abort_session(spark):
