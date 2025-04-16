@@ -5,7 +5,7 @@ import logging
 from utils import get_spark_session, write_into_table, abort_session, APIClient
 
 # Create a task that helps in ingesting the data into Suppliers
-@task(task_id="ingest_data_into_suppliers")
+@task(task_id="m_ingest_data_into_suppliers")
 def supplier_data_ingestion():
     
     # Create an object for the Suppliers API Client Class
@@ -23,10 +23,10 @@ def supplier_data_ingestion():
 
     # Do the Transformations for the Suppliers Dataframe
     suppliers_df = suppliers_df\
-        .withColumnRenamed(suppliers_df.columns[0], "supplier_id")\
-        .withColumnRenamed(suppliers_df.columns[1], "supplier_name")\
-        .withColumnRenamed(suppliers_df.columns[2], "contact_details")\
-        .withColumnRenamed(suppliers_df.columns[3], "region")
+        .withColumnRenamed(suppliers_df.columns[0], "SUPPLIER_ID")\
+        .withColumnRenamed(suppliers_df.columns[1], "SUPPLIER_NAME")\
+        .withColumnRenamed(suppliers_df.columns[2], "CONTACT_DETAILS")\
+        .withColumnRenamed(suppliers_df.columns[3], "REGION")
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
@@ -37,7 +37,7 @@ def supplier_data_ingestion():
     return f"{api} data ingested successfully!"
 
 # Create a task that helps in ingesting the data into Customers
-@task(task_id="ingest_data_into_customers")
+@task(task_id="m_ingest_data_into_customers")
 def customer_data_ingestion():
     
     # Create an object for the Suppliers API Client Class
@@ -70,7 +70,7 @@ def customer_data_ingestion():
     return f"{api} data ingested successfully!"
 
 # Create a task that helps in ingesting the data into Products
-@task(task_id="ingest_data_into_products")
+@task(task_id="m_ingest_data_into_products")
 def products_data_ingestion():
 
     # Create an object for the Suppliers API Client Class
@@ -105,7 +105,7 @@ def products_data_ingestion():
     return f"{api} data ingested successfully!"
 
 # Create a task that helps the data in ingesting the data into sales
-@task(task_id="ingest_data_into_sales")
+@task(task_id="m_ingest_data_into_sales")
 def sales_data_ingestion():
 
     # Create a spark session with the hadoop configurations and also authentic credentials

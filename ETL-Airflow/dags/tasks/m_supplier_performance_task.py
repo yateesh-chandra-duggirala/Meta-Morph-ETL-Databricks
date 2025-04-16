@@ -1,4 +1,5 @@
-from airflow.operators import task
+# Import Libraries
+from airflow.decorators import task
 import logging
 from utils import get_spark_session, write_into_table, abort_session, read_data
 from pyspark.sql.functions import *
@@ -6,11 +7,12 @@ from pyspark.sql.window import Window
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_load_suppliers_performance")
-def supplier_data_ingestion():
+def suppliers_performance_ingestion():
 
     # Get a spark session
     spark = get_spark_session()
 
+    # Process the Node : SQ_Shortcut_To_Suppliers - reads data from Suppliers Table
     SQ_Shortcut_To_Suppliers = read_data(spark,"raw.suppliers")
     SQ_Shortcut_To_Suppliers = SQ_Shortcut_To_Suppliers \
                                 .select(
@@ -18,6 +20,7 @@ def supplier_data_ingestion():
                                     col("supplier_name")
                                 )
     
+    # Process the Node : SQ_Shortcut_To_Products - reads data from Products Table
     SQ_Shortcut_To_Products = read_data(spark,"raw.products")
     SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
                                 .select(
@@ -27,7 +30,8 @@ def supplier_data_ingestion():
                                     col("price")
                                 )
     
-    SQ_Shortcut_To_Sales = read_data("raw.sales")
+    # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
+    SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
     SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
                                 .select(
                                     col("sale_id"),
@@ -37,6 +41,7 @@ def supplier_data_ingestion():
                                     col("discount")
                                 )
 
+    # Process the Node : JNR_Supplier_Products - joins the 2 nodes SQ_Shortcut_To_Suppliers and SQ_Shortcut_To_Products
     JNR_Supplier_Products = SQ_Shortcut_To_Suppliers \
                             .join(
                                 SQ_Shortcut_To_Products, 
@@ -51,6 +56,7 @@ def supplier_data_ingestion():
                                 SQ_Shortcut_To_Products.price
                             )
     
+    # Process the Node : JNR_Master - joins the 2 nodes and JNR_Supplier_Products and SQ_Shortcut_To_Sales
     JNR_Master = JNR_Supplier_Products \
                             .join(
                                 SQ_Shortcut_To_Sales,
@@ -69,6 +75,7 @@ def supplier_data_ingestion():
                                 SQ_Shortcut_To_Sales.discount
                             )
     
+    # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
                             .groupBy(["supplier_id", "supplier_name", "product_name"]) \
                             .agg(
@@ -87,22 +94,28 @@ def supplier_data_ingestion():
                                 ).alias("agg_total_stocks_sold")
                             )
 
+    # Assigns a rank to each supplier based on their total stocks sold (highest first), within each supplier group
     window_spec = Window.partitionBy(col("supplier_id")).orderBy(desc("agg_total_stocks_sold"))
     Shortcut_To_Suppliers_Performance_tgt = AGG_TRANS.withColumn("rnk", row_number().over(window_spec))
 
+    # Assign a Unique Performance ID for the records
     Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
                                             .withColumn("performance_id", monotonically_increasing_id() + 1) \
                                             .filter("rnk = 1") \
                                             .drop(col("rnk"))
 
+    # Process the Node : Shortcut_To_Suppliers_Performance_tgt - The Target desired table
     Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
-                                            .withColumnRenamed("performance_id","PERFORMANCE_ID") \
-                                            .withColumnRenamed("supplier_id","SUPPLIER_ID") \
-                                            .withColumnRenamed("supplier_name", "SUPPLIER_NAME") \
-                                            .withColumnRenamed("agg_total_revenue", "TOTAL_REVENUE") \
-                                            .withColumnRenamed("agg_total_products_sold", "TOTAL_PRODUCTS_SOLD") \
-                                            .withColumnRenamed("agg_total_stocks_sold", "TOTAL_STOCKS_SOLD") \
-                                            .withColumnRenamed("product_name", "TOP_PERFORMER")
+                                                .select(
+                                                        col("performance_id").alias("PERFORMANCE_ID"),
+                                                        col("supplier_id").alias("SUPPLIER_ID"),
+                                                        col("supplier_name").alias("SUPPLIER_NAME"),
+                                                        col("agg_total_revenue").alias("TOTAL_REVENUE"),
+                                                        col("agg_total_products_sold").alias("TOTAL_PRODUCTS_SOLD"),
+                                                        col("agg_total_products_sold").alias("TOTAL_STOCKS_SOLD"),
+                                                        col("product_name").alias("TOP_PERFORMER")
+                                                )
+    logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built")
 
     # Load the data into the table
     write_into_table("suppliers_performance", Shortcut_To_Suppliers_Performance_tgt, "raw", "overwrite")

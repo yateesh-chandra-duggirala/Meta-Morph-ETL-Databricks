@@ -7,6 +7,7 @@ from tasks.ingestion_tasks import (
     products_data_ingestion,
     sales_data_ingestion
 )
+from tasks.m_supplier_performance_task import suppliers_performance_ingestion
 
 # Create a Dag
 @dag(
@@ -29,8 +30,11 @@ def ingestion():
     # Make a function call for the Sales task
     sales = sales_data_ingestion()
 
+    # Make a function call for loading the Suppliers Performance task
+    supplier_performance = suppliers_performance_ingestion()
+
     # Set the Tasks Dependency
-    [suppliers, customers, products, sales]
+    [suppliers, customers, products, sales] >> supplier_performance
 
 # Call the Ingestion Dag Function
 ingestion()
