@@ -55,11 +55,11 @@ def customer_data_ingestion():
     
     # Do the transformations for the customers Dataframe
     customer_df = customer_df\
-        .withColumnRenamed(customer_df.columns[0], "customer_id")\
-        .withColumnRenamed(customer_df.columns[1], "name")\
-        .withColumnRenamed(customer_df.columns[2], "city")\
-        .withColumnRenamed(customer_df.columns[3], "email")\
-        .withColumnRenamed(customer_df.columns[4], "phone_number")
+        .withColumnRenamed(customer_df.columns[0], "CUSTOMER_ID")\
+        .withColumnRenamed(customer_df.columns[1], "NAME")\
+        .withColumnRenamed(customer_df.columns[2], "CITY")\
+        .withColumnRenamed(customer_df.columns[3], "EMAIL")\
+        .withColumnRenamed(customer_df.columns[4], "PHONE_NUMBER")
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
@@ -88,13 +88,13 @@ def products_data_ingestion():
 
     # Do the Transformation for the product Dataframe
     product_df = product_df\
-        .withColumnRenamed(product_df.columns[0], "product_id")\
-        .withColumnRenamed(product_df.columns[1], "product_name")\
-        .withColumnRenamed(product_df.columns[2], "category")\
-        .withColumnRenamed(product_df.columns[3], "price")\
-        .withColumnRenamed(product_df.columns[4], "stock_quantity")\
-        .withColumnRenamed(product_df.columns[5], "reorder_level")\
-        .withColumnRenamed(product_df.columns[6], "supplier_id")
+        .withColumnRenamed(product_df.columns[0], "PRODUCT_ID")\
+        .withColumnRenamed(product_df.columns[1], "PRODUCT_NAME")\
+        .withColumnRenamed(product_df.columns[2], "CATEGORY")\
+        .withColumnRenamed(product_df.columns[3], "PRICE")\
+        .withColumnRenamed(product_df.columns[4], "STOCK_QUANTITY")\
+        .withColumnRenamed(product_df.columns[5], "REORDER_LEVEL")\
+        .withColumnRenamed(product_df.columns[6], "SUPPLIER_ID")
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
@@ -123,15 +123,15 @@ def sales_data_ingestion():
     logging.info("Reading the CSV File into dataframe...")
     # Do the Transformation for the Sales Dataframe
     sales_df = sales_df\
-        .withColumnRenamed(sales_df.columns[0], "sale_id")\
-        .withColumnRenamed(sales_df.columns[1], "customer_id")\
-        .withColumnRenamed(sales_df.columns[2], "product_id")\
-        .withColumnRenamed(sales_df.columns[3], "sale_date")\
-        .withColumnRenamed(sales_df.columns[4], "quantity")\
-        .withColumnRenamed(sales_df.columns[5], "discount")\
-        .withColumnRenamed(sales_df.columns[6], "shipping_cost")\
-        .withColumnRenamed(sales_df.columns[7], "order_status")\
-        .withColumnRenamed(sales_df.columns[8], "payment_mode")
+        .withColumnRenamed(sales_df.columns[0], "SALE_ID")\
+        .withColumnRenamed(sales_df.columns[1], "CUSTOMER_ID")\
+        .withColumnRenamed(sales_df.columns[2], "PRODUCT_ID")\
+        .withColumnRenamed(sales_df.columns[3], "SALE_DATE")\
+        .withColumnRenamed(sales_df.columns[4], "QUANTITY")\
+        .withColumnRenamed(sales_df.columns[5], "DISCOUNT")\
+        .withColumnRenamed(sales_df.columns[6], "SHIPPING_COST")\
+        .withColumnRenamed(sales_df.columns[7], "ORDER_STATUS")\
+        .withColumnRenamed(sales_df.columns[8], "PAYMENT_MODE")
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the Table

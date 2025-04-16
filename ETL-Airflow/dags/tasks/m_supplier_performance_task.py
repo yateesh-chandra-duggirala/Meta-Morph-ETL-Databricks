@@ -19,7 +19,7 @@ def suppliers_performance_ingestion():
                                     col("supplier_id"),
                                     col("supplier_name")
                                 )
-    
+
     # Process the Node : SQ_Shortcut_To_Products - reads data from Products Table
     SQ_Shortcut_To_Products = read_data(spark,"raw.products")
     SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
@@ -29,7 +29,7 @@ def suppliers_performance_ingestion():
                                     col("supplier_id"),
                                     col("price")
                                 )
-    
+
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
     SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
     SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
@@ -55,7 +55,7 @@ def suppliers_performance_ingestion():
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.price
                             )
-    
+
     # Process the Node : JNR_Master - joins the 2 nodes and JNR_Supplier_Products and SQ_Shortcut_To_Sales
     JNR_Master = JNR_Supplier_Products \
                             .join(
@@ -77,22 +77,22 @@ def suppliers_performance_ingestion():
     
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
-                            .groupBy(["supplier_id", "supplier_name", "product_name"]) \
-                            .agg(
-                                coalesce(
-                                    sum(
-                                    (col("price") - (col("price") * col("discount") / 100.0)) * col("quantity")
-                                    ), lit(0.0)
-                                ).alias("agg_total_revenue"),
+                    .groupBy(["supplier_id", "supplier_name", "product_name"]) \
+                    .agg(
+                        coalesce(
+                            round(sum(
+                            (col("price") - (col("price") * col("discount") / 100.0)) * col("quantity")
+                            ),2), lit(0.0)
+                        ).alias("agg_total_revenue"),
 
-                                count(col("sale_id")).alias("agg_total_products_sold"),
-                                
-                                coalesce(
-                                    sum(
-                                        col("quantity")
-                                    ), lit(0)
-                                ).alias("agg_total_stocks_sold")
-                            )
+                        count(col("sale_id")).alias("agg_total_products_sold"),
+                        
+                        coalesce(
+                            round(sum(
+                                col("quantity")
+                            ), 2), lit(0)
+                        ).alias("agg_total_stocks_sold")
+                    )
 
     # Assigns a rank to each supplier based on their total stocks sold (highest first), within each supplier group
     window_spec = Window.partitionBy(col("supplier_id")).orderBy(desc("agg_total_stocks_sold"))
@@ -100,25 +100,27 @@ def suppliers_performance_ingestion():
 
     # Assign a Unique Performance ID for the records
     Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
-                                            .withColumn("performance_id", monotonically_increasing_id() + 1) \
                                             .filter("rnk = 1") \
-                                            .drop(col("rnk"))
+                                            .drop(col("rnk")) \
+                                            .withColumn("performance_id", monotonically_increasing_id() + 1) \
+                                            .withColumn("day_dt", current_date())
 
     # Process the Node : Shortcut_To_Suppliers_Performance_tgt - The Target desired table
     Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
                                                 .select(
+                                                        col("day_dt").alias("DAY_DT"),
                                                         col("performance_id").alias("PERFORMANCE_ID"),
                                                         col("supplier_id").alias("SUPPLIER_ID"),
                                                         col("supplier_name").alias("SUPPLIER_NAME"),
                                                         col("agg_total_revenue").alias("TOTAL_REVENUE"),
                                                         col("agg_total_products_sold").alias("TOTAL_PRODUCTS_SOLD"),
                                                         col("agg_total_products_sold").alias("TOTAL_STOCKS_SOLD"),
-                                                        col("product_name").alias("TOP_PERFORMER")
+                                                        col("product_name").alias("TOP_SELLING_PRODUCT")
                                                 )
     logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built")
 
     # Load the data into the table
-    write_into_table("suppliers_performance", Shortcut_To_Suppliers_Performance_tgt, "raw", "overwrite")
+    write_into_table("suppliers_performance", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
 
     # Abort the session when Done.
     abort_session(spark)
