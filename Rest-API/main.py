@@ -10,7 +10,7 @@ from fastapi import FastAPI, Depends
 from auth_utils import *
 
 # today = datetime.now().strftime("%Y%m%d")
-today = "20250330"
+today = "20250329"
 print(today)
 key_path = "meta-morph-d-eng-pro-admin.json"
 
@@ -99,8 +99,8 @@ async def generate_data():
             "Product Id": row[0],
             "Product Name": row[1],
             "Category": row[2],
-            "Price": round(random.uniform(5, 1000), 2),
-            "Stock Quantity": random.randint(50, 1000),
+            "Price": round(random.uniform(5, 700), 2),
+            "Stock Quantity": random.randint(6000, 12000),
             "Reorder Level": random.randint(10, 50),
             "Supplier Id": f"S{str(random.randint(1, NUM_SUPPLIERS_SAMPLE)).zfill(4)}",
         }

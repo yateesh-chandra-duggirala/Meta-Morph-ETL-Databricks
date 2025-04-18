@@ -45,7 +45,7 @@ def suppliers_performance_ingestion():
     JNR_Supplier_Products = SQ_Shortcut_To_Suppliers \
                             .join(
                                 SQ_Shortcut_To_Products, 
-                                SQ_Shortcut_To_Suppliers.supplier_id == SQ_Shortcut_To_Products.supplier_id, 
+                                trim(SQ_Shortcut_To_Suppliers.supplier_id) == trim(SQ_Shortcut_To_Products.supplier_id), 
                                 'left'
                             ) \
                             .select(
@@ -120,8 +120,8 @@ def suppliers_performance_ingestion():
     logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built")
 
     # Load the data into the table
-    write_into_table("suppliers_performance", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
+    write_into_table("supplier_performance", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
 
     # Abort the session when Done.
     abort_session(spark)
-    return f"suppliers_performance data ingested successfully!"
+    return f"supplier_performance data ingested successfully!"

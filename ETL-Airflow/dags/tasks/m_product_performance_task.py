@@ -64,6 +64,10 @@ def product_performance_ingestion():
                             ),2), lit(0.0)
                         ).alias("agg_total_sales_amount"),
 
+                        coalesce(
+                            round(avg(col("price")), 2), lit(0.0)
+                        ).alias("agg_average_sale_price"),
+
                         coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")                       
                     )
 
@@ -71,11 +75,9 @@ def product_performance_ingestion():
     window_spec = Window.orderBy("product_id")
     Shortcut_To_Products_Performance_tgt = AGG_TRANS.withColumn("rnk", row_number().over(window_spec))
 
-
     # Assigns a rank to each product based on their product_id
     Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
-                                            .withColumn("average_sale_price", round(col("agg_total_sales_amount") / when(col("agg_total_quantity_sold") != 0, col("agg_total_quantity_sold")).otherwise(lit(1)), 2)) \
-                                            .withColumn("stock_level_status", when(col("stock_quantity") < col("reorder_level"), "Below Reorder Level").otherwise("Sufficient Stock")) \
+                                            .withColumn("stock_level_status", when(col("agg_total_quantity_sold") < col("reorder_level"), "Below Reorder Level").otherwise("Sufficient Stock")) \
                                             .withColumn("day_dt", current_date()) 
 
     # Process the Node : Shortcut_To_Products_Performance_tgt - The Target desired table
@@ -88,12 +90,12 @@ def product_performance_ingestion():
                                                 col("agg_total_sales_amount").alias("TOTAL_SALES_AMOUNT"),
                                                 col("agg_total_quantity_sold").alias("TOTAL_QUANTITY_SOLD"),
                                                 col("stock_quantity").alias("STOCK_QUANTITY"),
-                                                col("average_sale_price").alias("AVG_SALE_PRICE"),
+                                                col("agg_average_sale_price").alias("AVG_SALE_PRICE"),
                                                 col("reorder_level").alias("REORDER_LEVEL"),
                                                 col("stock_level_status").alias("STOCK_LEVEL_STATUS"),
                                                 col("category").alias("CATEGORY")
                                             )
-    
+
     logging.info("Data Frame : 'Shortcut_To_Products_Performance_tgt' is built")
 
     # Load the data into the table
