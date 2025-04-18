@@ -1,0 +1,106 @@
+# Import Libraries
+from airflow.decorators import task
+import logging
+from utils import get_spark_session, write_into_table, abort_session, read_data
+from pyspark.sql.functions import *
+from pyspark.sql.window import Window
+
+# Create a task that helps in ingesting the data into Suppliers
+@task(task_id="m_load_products_performance")
+def product_performance_ingestion():
+
+    # Get a spark session
+    spark = get_spark_session()
+
+    # Process the Node : SQ_Shortcut_To_Products - reads data from Products Table
+    SQ_Shortcut_To_Products = read_data(spark,"raw.products")
+    SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
+                                .select(
+                                    col("product_id"),
+                                    col("product_name"),
+                                    col("price"),
+                                    col("category"),
+                                    col("stock_quantity"),
+                                    col("reorder_level")
+                                )
+
+    # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
+    SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
+    SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
+                                .select(
+                                    col("product_id"),
+                                    col("order_status"),
+                                    col("quantity"),
+                                    col("discount")
+                                )
+
+    # Process the Node : JNR_Master - joins the 2 nodes and JNR_Supplier_Products and SQ_Shortcut_To_Sales
+    JNR_Master = SQ_Shortcut_To_Products \
+                            .join(
+                                SQ_Shortcut_To_Sales,
+                                (SQ_Shortcut_To_Sales.product_id == SQ_Shortcut_To_Products.product_id) & 
+                                (SQ_Shortcut_To_Sales.order_status != "Cancelled"),
+                                "left"
+                            ) \
+                            .select(
+                                SQ_Shortcut_To_Products.product_id,
+                                SQ_Shortcut_To_Products.product_name,
+                                SQ_Shortcut_To_Products.price,
+                                SQ_Shortcut_To_Products.category,
+                                SQ_Shortcut_To_Products.stock_quantity,
+                                SQ_Shortcut_To_Products.reorder_level,
+                                SQ_Shortcut_To_Sales.order_status,
+                                SQ_Shortcut_To_Sales.quantity,
+                                SQ_Shortcut_To_Sales.discount
+                            )
+
+    # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
+    AGG_TRANS = JNR_Master \
+                    .groupBy(["product_id", "product_name", "category", "stock_quantity", "reorder_level"]) \
+                    .agg(
+                        coalesce(
+                            round(sum(
+                            (col("price") - (col("price") * col("discount") / lit(100.0))) * col("quantity")
+                            ),2), lit(0.0)
+                        ).alias("agg_total_sales_amount"),
+
+                        coalesce(
+                            round(avg(col("price")), 2), lit(0.0)
+                        ).alias("agg_average_sale_price"),
+
+                        coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")                       
+                    )
+
+    # Do a Window Partition to assign performance_id
+    window_spec = Window.orderBy("product_id")
+    Shortcut_To_Products_Performance_tgt = AGG_TRANS.withColumn("rnk", row_number().over(window_spec))
+
+    # Assigns a rank to each product based on their product_id
+    Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
+                                            .withColumn("stock_level_status", when(col("agg_total_quantity_sold") < col("reorder_level"), "Below Reorder Level").otherwise("Sufficient Stock")) \
+                                            .withColumn("day_dt", current_date()) 
+
+    # Process the Node : Shortcut_To_Products_Performance_tgt - The Target desired table
+    Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
+                                            .select(
+                                                col("day_dt").alias("DAY_DT"),
+                                                col("rnk").alias("PERFORMANCE_ID"),
+                                                col("product_id").alias("PRODUCT_ID"),
+                                                col("product_name").alias("PRODUCT_NAME"),
+                                                col("agg_total_sales_amount").alias("TOTAL_SALES_AMOUNT"),
+                                                col("agg_total_quantity_sold").alias("TOTAL_QUANTITY_SOLD"),
+                                                col("stock_quantity").alias("STOCK_QUANTITY"),
+                                                col("agg_average_sale_price").alias("AVG_SALE_PRICE"),
+                                                col("reorder_level").alias("REORDER_LEVEL"),
+                                                col("stock_level_status").alias("STOCK_LEVEL_STATUS"),
+                                                col("category").alias("CATEGORY")
+                                            )
+
+    logging.info("Data Frame : 'Shortcut_To_Products_Performance_tgt' is built")
+
+    # Load the data into the table
+    write_into_table("product_performance", Shortcut_To_Products_Performance_tgt, "legacy", "overwrite")
+
+    # Abort the session when Done.
+    abort_session(spark)
+    return f"product_performance data ingested successfully!"
