@@ -68,7 +68,7 @@ def product_performance_ingestion():
                             round(avg(col("price")), 2), lit(0.0)
                         ).alias("agg_average_sale_price"),
 
-                        coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")                       
+                        coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")
                     )
 
     # Do a Window Partition to assign performance_id
@@ -77,7 +77,16 @@ def product_performance_ingestion():
 
     # Assigns a rank to each product based on their product_id
     Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
-                                            .withColumn("stock_level_status", when(col("agg_total_quantity_sold") < col("reorder_level"), "Below Reorder Level").otherwise("Sufficient Stock")) \
+                                            .withColumn(
+                                                "total_stocks_left", col("stock_quantity") - col("agg_total_quantity_sold")
+                                            ) \
+                                            .withColumn(
+                                                "reordered_quantity", col("reorder_level") * col("stock_quantity") / 100
+                                            ) \
+                                            .withColumn(
+                                                "stock_level_status", 
+                                                    when(col("total_stocks_left") < col("reordered_quantity"), "Below Reorder Level").otherwise("Sufficient Stock")
+                                            ) \
                                             .withColumn("day_dt", current_date()) 
 
     # Process the Node : Shortcut_To_Products_Performance_tgt - The Target desired table
@@ -99,7 +108,7 @@ def product_performance_ingestion():
     logging.info("Data Frame : 'Shortcut_To_Products_Performance_tgt' is built")
 
     # Load the data into the table
-    write_into_table("product_performance", Shortcut_To_Products_Performance_tgt, "legacy", "overwrite")
+    write_into_table("product_performance", Shortcut_To_Products_Performance_tgt, "legacy", "append")
 
     # Abort the session when Done.
     abort_session(spark)
