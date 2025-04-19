@@ -47,7 +47,7 @@ def customer_data_ingestion():
     spark = get_spark_session()
     
     # Set the Customers value to fetch the data
-    api = "customer"
+    api = "customers"
     response = client.fetch_data(api, True)
 
     # Create a data frame from the response of the API

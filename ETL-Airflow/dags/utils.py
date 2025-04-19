@@ -15,7 +15,7 @@ class APIClient:
                 logging.info("Generating Token...")
                 token = requests.get(self.base_url + "/token").json()['access_token']
                 logging.info(f"The token is generated and fetching the response from {api_type} API")
-                response = requests.get(self.base_url + "/customers", headers={"Authorization": f"Bearer {token}"})
+                response = requests.get(self.base_url + "/" + api_type, headers={"Authorization": f"Bearer {token}"})
             else : 
                 logging.info(f"Fetching the response from {api_type} API")
                 response = requests.get(self.base_url + "/" + api_type)
