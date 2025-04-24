@@ -109,7 +109,7 @@ def products_data_ingestion():
 def sales_data_ingestion():
 
     # today = datetime.now().strftime("%Y%m%d")
-    today = "20250329"
+    today = "20250328"
 
     # Create a spark session with the hadoop configurations and also authentic credentials
     spark = SparkSession.builder.appName("GCS_to_Postgres") \

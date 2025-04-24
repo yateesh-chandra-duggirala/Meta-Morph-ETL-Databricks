@@ -10,7 +10,7 @@ from fastapi import FastAPI, Depends
 from auth_utils import *
 
 # today = datetime.now().strftime("%Y%m%d")
-today = "20250329"
+today = "20250328"
 print(today)
 key_path = "meta-morph-d-eng-pro-admin.json"
 
@@ -39,6 +39,7 @@ def get_data(relation, cnt):
     # Define a SQL Query with Insertion statements.
     get_sql = f'''
                 select * from server.{relation}
+                ORDER BY 1
                 LIMIT {cnt}
                 '''
 
@@ -70,9 +71,9 @@ async def gs_bucket_auth_save(sample, type_of_data):
 async def generate_data():
 
     NUM_SUPPLIERS_SAMPLE = 252
-    NUM_PRODUCTS_SAMPLE = random.randint(400,480)
-    NUM_CUSTOMERS_SAMPLE = random.randint(15000,30000)
-    NUM_SALES_SAMPLE = random.randint(200000,400000)
+    NUM_PRODUCTS_SAMPLE = random.randint(400,483)
+    NUM_CUSTOMERS_SAMPLE = random.randint(7005,10032)
+    NUM_SALES_SAMPLE = random.randint(50000,120000)
 
     # Generate Suppliers Data (Sample)
     print("Supplier Data Generation in progress....")
@@ -94,6 +95,11 @@ async def generate_data():
     print("Products Data Generation in progress....")
     products_from_db = get_data("product",NUM_PRODUCTS_SAMPLE)
 
+    supplier_id_list = random.sample(
+        [supplier["Supplier Id"].strip() for supplier in suppliers_sample], 
+        k=random.randint(210, 225)
+    )
+
     products_sample = [
         {
             "Product Id": row[0],
@@ -102,7 +108,7 @@ async def generate_data():
             "Price": round(random.uniform(5, 700), 2),
             "Stock Quantity": random.randint(6000, 12000),
             "Reorder Level": random.randint(10, 50),
-            "Supplier Id": f"S{str(random.randint(1, NUM_SUPPLIERS_SAMPLE)).zfill(4)}",
+            "Supplier Id": random.choice(supplier_id_list),
         }
         for row in products_from_db[:NUM_PRODUCTS_SAMPLE]
     ]
@@ -112,18 +118,17 @@ async def generate_data():
 
     # Generate Customers Data (Sample)
     print("Customers Data Generation in progress....")
-    customer_ids = [f"C{str(i).zfill(5)}" for i in range(1, NUM_CUSTOMERS_SAMPLE + 1)]
-    random.shuffle(customer_ids)
+    customer_from_db = get_data("customer",NUM_CUSTOMERS_SAMPLE)
 
     customers_sample = [
         {
-            "Customer Id": customer_id,
-            "Name": (name := fake.name()),
-            "City": fake.city(),
-            "Email": name.lower().replace(" ", "") + "@" + random.choice(["yahoo.com", "gmail.com", "outlook.com"]),
-            "Phone Number": str(random.choice([6, 7, 8, 9])) + ''.join(str(random.randint(0, 9)) for _ in range(9)),
+            "Customer Id": row[0],
+            "Name": row[1],
+            "City": row[2],
+            "Email": row[3],
+            "Phone Number": row[4],
         }
-        for customer_id in customer_ids
+        for row in customer_from_db[:NUM_CUSTOMERS_SAMPLE]
     ]
     print(f"*-*-*-*- Customers Dataset Generated with : {NUM_CUSTOMERS_SAMPLE} records -*-*-*-*-*")
     await gs_bucket_auth_save(customers_sample, "customer")
@@ -134,19 +139,27 @@ async def generate_data():
     sale_ids = list(range(1, NUM_SALES_SAMPLE + 1))
     random.shuffle(sale_ids)
 
+    product_id_list = random.sample(
+        [product["Product Id"] for product in products_sample], 
+        k=random.randint(300, 370)
+    )
+
+    customer_id_list = random.sample(
+        [customer["Customer Id"] for customer in customers_sample], 
+        k=random.randint(6800, 7000)
+    )
+
     for sale_id in sale_ids:
-        product = random.choice(products_sample)
         quantity = random.randint(1, 20)
         discount = round(random.uniform(0, 50), 2)
-        # sale_price = product["price"] * quantity * (1 - discount / 100)
         shipping_cost = round(random.uniform(5, 50), 2)
         order_status = random.choice(["Pending", "Shipped", "Delivered", "Cancelled"])
         payment_mode = random.choice(["Credit Card", "Debit Card", "UPI", "Cash on Delivery"])
 
         sales_sample.append({
             "Sale Id": sale_id,
-            "Customer Id": f"C{str(random.randint(1, NUM_CUSTOMERS_SAMPLE)).zfill(5)}",
-            "Product Id": product["Product Id"],
+            "Customer Id": random.choice(customer_id_list),
+            "Product Id": random.choice(product_id_list),
             "Sale Date": random.choice([fake.date_between(start_date="-2y", end_date="today").strftime("%Y-%m-%d"), ""]),
             "Quantity": quantity,
             "Discount": discount,
