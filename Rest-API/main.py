@@ -101,15 +101,18 @@ async def generate_data():
     )
 
     products_sample = [
-        {
-            "Product Id": row[0],
-            "Product Name": row[1],
-            "Category": row[2],
-            "Price": round(random.uniform(5, 700), 2),
-            "Stock Quantity": random.randint(6000, 12000),
-            "Reorder Level": random.randint(10, 50),
-            "Supplier Id": random.choice(supplier_id_list),
+        (
+            lambda price=round(random.uniform(5, 700), 2): {
+                "Product Id": row[0],
+                "Product Name": row[1],
+                "Category": row[2],
+                "Price": price,
+                "Cost Price": round(price * random.uniform(0.6, 0.95), 2),
+                "Stock Quantity": random.randint(6000, 12000),
+                "Reorder Level": random.randint(10, 50),
+                "Supplier Id": random.choice(supplier_id_list),
         }
+        )()
         for row in products_from_db[:NUM_PRODUCTS_SAMPLE]
     ]
 
