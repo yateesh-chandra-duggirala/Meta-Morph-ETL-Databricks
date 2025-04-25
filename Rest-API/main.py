@@ -151,7 +151,7 @@ async def generate_data():
 
     for sale_id in sale_ids:
         quantity = random.randint(1, 20)
-        discount = round(random.uniform(0, 50), 2)
+        discount = round(random.uniform(0, 17), 2)
         shipping_cost = round(random.uniform(5, 50), 2)
         order_status = random.choice(["Pending", "Shipped", "Delivered", "Cancelled"])
         payment_mode = random.choice(["Credit Card", "Debit Card", "UPI", "Cash on Delivery"])

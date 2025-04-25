@@ -19,7 +19,8 @@ def customer_sales_report_ingestion():
                                     col("product_id"),
                                     col("product_name"),
                                     col("category"),
-                                    col("price")
+                                    col("price"),
+                                    col("cost_price")
                                 )
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
@@ -76,7 +77,6 @@ def customer_sales_report_ingestion():
                             ) \
                             .select(
                                 JNR_Sales_Customer.sale_id,
-                                JNR_Sales_Customer.product_id,
                                 JNR_Sales_Customer.order_status,
                                 JNR_Sales_Customer.quantity,
                                 JNR_Sales_Customer.discount,
@@ -88,8 +88,17 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.category,
-                                SQ_Shortcut_To_Products.price
+                                SQ_Shortcut_To_Products.price,
+                                SQ_Shortcut_To_Products.cost_price,
                             )
+
+    # Process the Node : Shortcut_To_Customer_Sales_Report_Tgt 
+    Shortcut_To_Customer_Sales_Report_Tgt = JNR_Master \
+                                                .withColumn("day_dt", current_date()) \
+                                                .withColumn("total_sale_amount", col("quantity")*col("price")*(1-(col("discount")/100))) \
+                                                .withColumn("profit", col("total_sale_amount")-(col("cost_price")*col("quantity"))) \
+
+    Shortcut_To_Customer_Sales_Report_Tgt.show()               
 
     # Abort the session when Done.
     abort_session(spark)
