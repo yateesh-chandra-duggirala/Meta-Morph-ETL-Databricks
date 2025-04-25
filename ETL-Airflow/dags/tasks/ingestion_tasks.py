@@ -92,9 +92,10 @@ def products_data_ingestion():
         .withColumnRenamed(product_df.columns[1], "PRODUCT_NAME")\
         .withColumnRenamed(product_df.columns[2], "CATEGORY")\
         .withColumnRenamed(product_df.columns[3], "PRICE")\
-        .withColumnRenamed(product_df.columns[4], "STOCK_QUANTITY")\
-        .withColumnRenamed(product_df.columns[5], "REORDER_LEVEL")\
-        .withColumnRenamed(product_df.columns[6], "SUPPLIER_ID")
+        .withColumnRenamed(product_df.columns[4], "COST_PRICE")\
+        .withColumnRenamed(product_df.columns[5], "STOCK_QUANTITY")\
+        .withColumnRenamed(product_df.columns[6], "REORDER_LEVEL")\
+        .withColumnRenamed(product_df.columns[7], "SUPPLIER_ID")
     logging.info(f"Writing into table: {api}")
 
     # Load the data into the table
