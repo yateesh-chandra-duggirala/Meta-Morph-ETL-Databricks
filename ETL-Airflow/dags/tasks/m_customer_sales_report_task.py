@@ -19,8 +19,7 @@ def customer_sales_report_ingestion():
                                     col("product_id"),
                                     col("product_name"),
                                     col("category"),
-                                    col("price"),
-                                    col("cost_price")
+                                    col("price")
                                 )
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
@@ -47,12 +46,12 @@ def customer_sales_report_ingestion():
                                 )
 
     # Process the Node : JNR_Sales_Customer - joins the 2 nodes SQ_Shortcut_To_Sales and SQ_Shortcut_To_Customers
-    JNR_Sales_Customer = SQ_Shortcut_To_Sales \
+    JNR_Sales_Customer = SQ_Shortcut_To_Customers \
                             .join(
-                                SQ_Shortcut_To_Customers, 
+                                SQ_Shortcut_To_Sales, 
                                 (SQ_Shortcut_To_Sales.customer_id == SQ_Shortcut_To_Customers.customer_id) &
                                 (SQ_Shortcut_To_Sales.order_status != "Cancelled"), 
-                                'left'
+                                'inner'
                             ) \
                             .select(
                                 SQ_Shortcut_To_Sales.sale_id,
@@ -73,7 +72,7 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Products,
                                 (JNR_Sales_Customer.product_id == SQ_Shortcut_To_Products.product_id) & 
                                 (JNR_Sales_Customer.order_status != "Cancelled"),
-                                "left"
+                                "inner"
                             ) \
                             .select(
                                 JNR_Sales_Customer.sale_id,
@@ -88,18 +87,38 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.category,
-                                SQ_Shortcut_To_Products.price,
-                                SQ_Shortcut_To_Products.cost_price,
+                                SQ_Shortcut_To_Products.price
                             )
 
     # Process the Node : Shortcut_To_Customer_Sales_Report_Tgt 
     Shortcut_To_Customer_Sales_Report_Tgt = JNR_Master \
                                                 .withColumn("day_dt", current_date()) \
-                                                .withColumn("total_sale_amount", col("quantity")*col("price")*(1-(col("discount")/100))) \
-                                                .withColumn("profit", col("total_sale_amount")-(col("cost_price")*col("quantity"))) \
+                                                .withColumn("sale_amount", col("quantity")*col("price")*(1-(col("discount")/100))) \
+                                                .withColumn("sale_date", coalesce(col("sale_date"), current_date() - 1)) \
+                                                .withColumn("sale_year",year(col("sale_date"))) \
+                                                .withColumn("sale_month",date_format(col("sale_date"), "MMMM")) \
+                                                .withColumn("load_tstmp", current_timestamp())
+
+    Shortcut_To_Customer_Sales_Report_Tgt = Shortcut_To_Customer_Sales_Report_Tgt \
+                                                .select(
+                                                    col("day_dt").alias("DAY_DT"),
+                                                    col("customer_id").alias("CUSTOMER_ID"),
+                                                    col("name").alias("CUSTOMER_NAME"),
+                                                    col("sale_id").alias("SALE_ID"),
+                                                    col("city").alias("CITY"),
+                                                    col("product_name").alias("PRODUCT_NAME"),
+                                                    col("category").alias("CATEGORY"),
+                                                    col("sale_date").alias("SALE_DATE"),
+                                                    col("sale_month").alias("SALE_MONTH"),
+                                                    col("sale_year").alias("SALE_DATE"),
+                                                    col("quantity").alias("QUANTITY"),
+                                                    col("price").alias("PRICE"),
+                                                    col("sale_amount").alias("SALE_AMOUNT"),
+                                                    col("load_tstmp").alias("LOAD_TSTMP")
+                                                )
 
     Shortcut_To_Customer_Sales_Report_Tgt.show()               
 
     # Abort the session when Done.
     abort_session(spark)
-    return f"supplier_performance data ingested successfully!"
+    return f"customer_sales_report data ingested successfully!"
