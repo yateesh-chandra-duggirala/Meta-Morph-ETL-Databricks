@@ -19,6 +19,7 @@ def product_performance_ingestion():
                                     col("product_id"),
                                     col("product_name"),
                                     col("price"),
+                                    col("cost_price"),
                                     col("category"),
                                     col("stock_quantity"),
                                     col("reorder_level")
@@ -46,6 +47,7 @@ def product_performance_ingestion():
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.price,
+                                SQ_Shortcut_To_Products.cost_price,
                                 SQ_Shortcut_To_Products.category,
                                 SQ_Shortcut_To_Products.stock_quantity,
                                 SQ_Shortcut_To_Products.reorder_level,
@@ -56,7 +58,7 @@ def product_performance_ingestion():
 
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
-                    .groupBy(["product_id", "product_name", "category", "stock_quantity", "reorder_level"]) \
+                    .groupBy(["product_id", "product_name", "category", "stock_quantity", "reorder_level", "cost_price"]) \
                     .agg(
                         coalesce(
                             round(sum(
@@ -71,12 +73,8 @@ def product_performance_ingestion():
                         coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")
                     )
 
-    # Do a Window Partition to assign performance_id
-    window_spec = Window.orderBy("product_id")
-    Shortcut_To_Products_Performance_tgt = AGG_TRANS.withColumn("rnk", row_number().over(window_spec))
-
     # Assigns a rank to each product based on their product_id
-    Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
+    Shortcut_To_Products_Performance_tgt = AGG_TRANS \
                                             .withColumn(
                                                 "total_stocks_left", col("stock_quantity") - col("agg_total_quantity_sold")
                                             ) \
@@ -87,13 +85,21 @@ def product_performance_ingestion():
                                                 "stock_level_status", 
                                                     when(col("total_stocks_left") < col("reordered_quantity"), "Below Reorder Level").otherwise("Sufficient Stock")
                                             ) \
-                                            .withColumn("day_dt", current_date()) 
+                                            .withColumn("day_dt", current_date()) \
+                                            .withColumn(
+                                                "profit",
+                                                coalesce(
+                                                    round(
+                                                        col("agg_total_sales_amount") - (col("agg_total_quantity_sold") * col("cost_price")),
+                                                        2
+                                                    ), lit(0.0)
+                                                )
+                                            )
 
     # Process the Node : Shortcut_To_Products_Performance_tgt - The Target desired table
     Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
                                             .select(
                                                 col("day_dt").alias("DAY_DT"),
-                                                col("rnk").alias("PERFORMANCE_ID"),
                                                 col("product_id").alias("PRODUCT_ID"),
                                                 col("product_name").alias("PRODUCT_NAME"),
                                                 col("agg_total_sales_amount").alias("TOTAL_SALES_AMOUNT"),
@@ -102,6 +108,7 @@ def product_performance_ingestion():
                                                 col("agg_average_sale_price").alias("AVG_SALE_PRICE"),
                                                 col("reorder_level").alias("REORDER_LEVEL"),
                                                 col("stock_level_status").alias("STOCK_LEVEL_STATUS"),
+                                                col("profit").alias("PROFIT"),
                                                 col("category").alias("CATEGORY")
                                             )
 
