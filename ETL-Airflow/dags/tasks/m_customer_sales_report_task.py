@@ -19,9 +19,9 @@ def customer_sales_report_ingestion():
                                     col("product_id"),
                                     col("product_name"),
                                     col("category"),
-                                    col("price"),
-                                    col("cost_price")
+                                    col("price")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
     SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
@@ -36,6 +36,7 @@ def customer_sales_report_ingestion():
                                     col("sale_date"),
                                     col("shipping_cost")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Sales' is built...")
 
     # Process the Node : SQ_Shortcut_To_Customers - reads data from Customers Table
     SQ_Shortcut_To_Customers = read_data(spark,"raw.customers")
@@ -45,11 +46,25 @@ def customer_sales_report_ingestion():
                                     col("name"),
                                     col("city")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Customers' is built...")
+
+    # Fetching the list of the top_selling_products from the Supplier Performance
+    SQ_Shortcut_To_Supplier_Performance = read_data(spark, "legacy.supplier_performance")
+    SQ_Shortcut_To_Supplier_Performance = SQ_Shortcut_To_Supplier_Performance \
+                                            .select(
+                                                col("top_selling_product")
+                                            ) \
+                                            .filter(
+                                                        (col("day_dt") == (current_date() - 1)) & 
+                                                        (col("top_selling_product").isNotNull()) 
+                                            ).distinct()
+    data_list = SQ_Shortcut_To_Supplier_Performance.collect()
+    top_selling_products = [row['top_selling_product'] for row in data_list]
 
     # Process the Node : JNR_Sales_Customer - joins the 2 nodes SQ_Shortcut_To_Sales and SQ_Shortcut_To_Customers
-    JNR_Sales_Customer = SQ_Shortcut_To_Sales \
+    JNR_Sales_Customer = SQ_Shortcut_To_Customers \
                             .join(
-                                SQ_Shortcut_To_Customers, 
+                                SQ_Shortcut_To_Sales, 
                                 (SQ_Shortcut_To_Sales.customer_id == SQ_Shortcut_To_Customers.customer_id) &
                                 (SQ_Shortcut_To_Sales.order_status != "Cancelled"), 
                                 'left'
@@ -66,6 +81,7 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Customers.name,
                                 SQ_Shortcut_To_Customers.city
                             )
+    logging.info(f"Data Frame : 'JNR_Sales_Customer' is built...")
 
     # Process the Node : JNR_Master - joins the 2 nodes and JNR_Sales_Customer and SQ_Shortcut_To_Products
     JNR_Master = JNR_Sales_Customer \
@@ -73,7 +89,7 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Products,
                                 (JNR_Sales_Customer.product_id == SQ_Shortcut_To_Products.product_id) & 
                                 (JNR_Sales_Customer.order_status != "Cancelled"),
-                                "left"
+                                "inner"
                             ) \
                             .select(
                                 JNR_Sales_Customer.sale_id,
@@ -88,18 +104,104 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.category,
-                                SQ_Shortcut_To_Products.price,
-                                SQ_Shortcut_To_Products.cost_price,
+                                SQ_Shortcut_To_Products.price
                             )
+    logging.info(f"Data Frame : 'JNR_Master' is built...")
 
-    # Process the Node : Shortcut_To_Customer_Sales_Report_Tgt 
-    Shortcut_To_Customer_Sales_Report_Tgt = JNR_Master \
-                                                .withColumn("day_dt", current_date()) \
-                                                .withColumn("total_sale_amount", col("quantity")*col("price")*(1-(col("discount")/100))) \
-                                                .withColumn("profit", col("total_sale_amount")-(col("cost_price")*col("quantity"))) \
+    # Process the Node : EXP_Add_Sales_Data - Adding new columns that comprise the Sales Info
+    EXP_Add_Sales_Data = JNR_Master \
+                            .withColumn("day_dt", current_date()) \
+                            .withColumn("sale_amount", col("quantity")*col("price")*(1-(col("discount")/100))) \
+                            .withColumn("sale_date", coalesce(col("sale_date"), current_date() - 1)) \
+                            .withColumn("sale_year",year(col("sale_date"))) \
+                            .withColumn("sale_month",date_format(col("sale_date"), "MMMM")) \
+                            .withColumn("load_tstmp", current_timestamp()) \
+                            .withColumn("top_performer",
+                                        when(col("product_name").isin(top_selling_products), True)
+                                        .otherwise(False)
+                                        )
+    logging.info(f"Data Frame : 'EXP_Add_Sales_Data' is built...")
 
-    Shortcut_To_Customer_Sales_Report_Tgt.show()               
+    # Process the Node : AGG_TRANS_Customer
+    AGG_TRANS_Customer = EXP_Add_Sales_Data \
+                            .groupBy("customer_id") \
+                                .agg(
+                                    sum("sale_amount").alias("sum_sales_amount")
+                                )
+    logging.info(f"Data Frame : 'AGG_TRANS_Customer' is built...")
+    
+    # Calculate the limits of the tier level
+    max_value = AGG_TRANS_Customer.select(round(max("sum_sales_amount"), 2).alias("max_sales_amount")).collect()[0][0]
+    gold_tier = max_value * 80/100
+    silver_tier = max_value * 50 / 100
+
+    # Process the Node : EXP_Customer_Sales_Report - Add the Loyalty_Tier column
+    EXP_Customer_Sales_Report = AGG_TRANS_Customer \
+                    .withColumn("loyalty_tier", 
+                                    when(col("sum_sales_amount") > gold_tier, "GOLD")
+                                    .when(col("sum_sales_amount").between(silver_tier,gold_tier),"SILVER")
+                                    .otherwise("BRONZE")
+                                )
+    logging.info(f"Data Frame : 'EXP_Customer_Sales_Report' is built...")
+
+    # Process the Node : JNR_Sales_Customer_Report - that joins the data
+    JNR_Sales_Customer_Report = EXP_Add_Sales_Data.alias("a") \
+                                    .join(
+                                        EXP_Customer_Sales_Report.alias("b"),
+                                        col("a.customer_id") == col("b.customer_id"),
+                                        "inner"
+                                    ) \
+                                    .select(
+                                        col("a.sale_id"),
+                                        col("a.order_status"),
+                                        col("a.quantity"),
+                                        col("a.discount"),
+                                        col("a.sale_date"),
+                                        col("a.shipping_cost"),
+                                        col("b.customer_id"),
+                                        col("a.name"),
+                                        col("a.city"),
+                                        col("a.product_id"),
+                                        col("a.product_name"),
+                                        col("a.category"),
+                                        col("a.price"),
+                                        col("a.day_dt"),
+                                        col("a.sale_amount"),
+                                        col("a.sale_year"),
+                                        col("a.sale_month"),
+                                        col("b.loyalty_tier"),
+                                        col("a.top_performer"),
+                                        col("a.load_tstmp")
+                                    )
+    logging.info(f"Data Frame : 'JNR_Sales_Customer_Report' is built...")
+
+    # Prodcess the Node : Shortcut_To_Customer_Sales_Report_Tgt - Target Dataframe.
+    Shortcut_To_Customer_Sales_Report_Tgt = JNR_Sales_Customer_Report \
+                                                .select(
+                                                    col("day_dt").alias("DAY_DT"),
+                                                    col("customer_id").alias("CUSTOMER_ID"),
+                                                    col("name").alias("CUSTOMER_NAME"),
+                                                    col("sale_id").alias("SALE_ID"),
+                                                    col("city").alias("CITY"),
+                                                    col("product_name").alias("PRODUCT_NAME"),
+                                                    col("category").alias("CATEGORY"),
+                                                    col("sale_date").alias("SALE_DATE"),
+                                                    col("sale_month").alias("SALE_MONTH"),
+                                                    col("sale_year").alias("SALE_YEAR"),
+                                                    col("quantity").alias("QUANTITY"),
+                                                    col("price").alias("PRICE"),
+                                                    col("sale_amount").alias("SALE_AMOUNT"),
+                                                    col("loyalty_tier").alias("LOYALTY_TIER"),
+                                                    col("top_performer").alias("TOP_PERFORMER"),
+                                                    col("load_tstmp").alias("LOAD_TSTMP")
+                                                )
+
+    # Shortcut_To_Customer_Sales_Report_Tgt.
+    logging.info(f"Data Frame : 'Shortcut_To_Customer_Sales_Report_Tgt' is built...")
+
+    # Load the data into the table
+    write_into_table("customer_sales_report", Shortcut_To_Customer_Sales_Report_Tgt, "legacy", "append")             
 
     # Abort the session when Done.
     abort_session(spark)
-    return f"supplier_performance data ingested successfully!"
+    return f"customer_sales_report data ingested successfully!"
