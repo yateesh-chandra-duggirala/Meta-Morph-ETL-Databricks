@@ -48,6 +48,19 @@ def customer_sales_report_ingestion():
                                 )
     logging.info(f"Data Frame : 'SQ_Shortcut_To_Customers' is built...")
 
+    # Fetching the list of the top_selling_products from the Supplier Performance
+    SQ_Shortcut_To_Supplier_Performance = read_data(spark, "legacy.supplier_performance")
+    SQ_Shortcut_To_Supplier_Performance = SQ_Shortcut_To_Supplier_Performance \
+                                            .select(
+                                                col("top_selling_product")
+                                            ) \
+                                            .filter(
+                                                        (col("day_dt") == (current_date() - 1)) & 
+                                                        (col("top_selling_product").isNotNull()) 
+                                            ).distinct()
+    data_list = SQ_Shortcut_To_Supplier_Performance.collect()
+    top_selling_products = [row['top_selling_product'] for row in data_list]
+
     # Process the Node : JNR_Sales_Customer - joins the 2 nodes SQ_Shortcut_To_Sales and SQ_Shortcut_To_Customers
     JNR_Sales_Customer = SQ_Shortcut_To_Customers \
                             .join(
@@ -102,7 +115,11 @@ def customer_sales_report_ingestion():
                             .withColumn("sale_date", coalesce(col("sale_date"), current_date() - 1)) \
                             .withColumn("sale_year",year(col("sale_date"))) \
                             .withColumn("sale_month",date_format(col("sale_date"), "MMMM")) \
-                            .withColumn("load_tstmp", current_timestamp())
+                            .withColumn("load_tstmp", current_timestamp()) \
+                            .withColumn("top_performer",
+                                        when(col("product_name").isin(top_selling_products), True)
+                                        .otherwise(False)
+                                        )
     logging.info(f"Data Frame : 'EXP_Add_Sales_Data' is built...")
 
     # Process the Node : AGG_TRANS_Customer
@@ -123,7 +140,7 @@ def customer_sales_report_ingestion():
                     .withColumn("loyalty_tier", 
                                     when(col("sum_sales_amount") > gold_tier, "GOLD")
                                     .when(col("sum_sales_amount").between(silver_tier,gold_tier),"SILVER")
-                                    .when(col("sum_sales_amount") < silver_tier, "BRONZE")
+                                    .otherwise("BRONZE")
                                 )
     logging.info(f"Data Frame : 'EXP_Customer_Sales_Report' is built...")
 
@@ -153,6 +170,7 @@ def customer_sales_report_ingestion():
                                         col("a.sale_year"),
                                         col("a.sale_month"),
                                         col("b.loyalty_tier"),
+                                        col("a.top_performer"),
                                         col("a.load_tstmp")
                                     )
     logging.info(f"Data Frame : 'JNR_Sales_Customer_Report' is built...")
@@ -174,6 +192,7 @@ def customer_sales_report_ingestion():
                                                     col("price").alias("PRICE"),
                                                     col("sale_amount").alias("SALE_AMOUNT"),
                                                     col("loyalty_tier").alias("LOYALTY_TIER"),
+                                                    col("top_performer").alias("TOP_PERFORMER"),
                                                     col("load_tstmp").alias("LOAD_TSTMP")
                                                 )
 
