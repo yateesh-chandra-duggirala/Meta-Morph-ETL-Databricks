@@ -200,7 +200,7 @@ def customer_sales_report_ingestion():
     logging.info(f"Data Frame : 'Shortcut_To_Customer_Sales_Report_Tgt' is built...")
 
     logging.info("Authenticating to GCS to load the data into parquet file..")
-    Shortcut_To_Customer_Sales_Report_Tgt.write.mode("append").parquet("gs://reporting-legacy/customer_sales_report.parquet")
+    Shortcut_To_Customer_Sales_Report_Tgt.write.mode("append").parquet("gs://reporting-legacy/customer_sales_report")
     logging.info(f"Loaded into Parquet File : customer_sales_report")
 
     # Load the data into the table
