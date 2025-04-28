@@ -19,6 +19,7 @@ def suppliers_performance_ingestion():
                                     col("supplier_id"),
                                     col("supplier_name")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Suppliers' is built...")
 
     # Process the Node : SQ_Shortcut_To_Products - reads data from Products Table
     SQ_Shortcut_To_Products = read_data(spark,"raw.products")
@@ -29,6 +30,7 @@ def suppliers_performance_ingestion():
                                     col("supplier_id"),
                                     col("price")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
     SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
@@ -40,6 +42,7 @@ def suppliers_performance_ingestion():
                                     col("quantity"),
                                     col("discount")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Sales' is built...")
 
     # Process the Node : JNR_Supplier_Products - joins the 2 nodes SQ_Shortcut_To_Suppliers and SQ_Shortcut_To_Products
     JNR_Supplier_Products = SQ_Shortcut_To_Suppliers \
@@ -55,6 +58,7 @@ def suppliers_performance_ingestion():
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.price
                             )
+    logging.info(f"Data Frame : 'JNR_Supplier_Products' is built...")
 
     # Process the Node : JNR_Master - joins the 2 nodes and JNR_Supplier_Products and SQ_Shortcut_To_Sales
     JNR_Master = JNR_Supplier_Products \
@@ -74,6 +78,7 @@ def suppliers_performance_ingestion():
                                 SQ_Shortcut_To_Sales.quantity,
                                 SQ_Shortcut_To_Sales.discount
                             )
+    logging.info(f"Data Frame : 'JNR_Master' is built...")
     
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
@@ -93,6 +98,7 @@ def suppliers_performance_ingestion():
                             ), 2), lit(0)
                         ).alias("agg_total_stocks_sold")
                     )
+    logging.info(f"Data Frame : 'AGG_TRANS' is built...")
 
     # Assigns a rank to each supplier based on their total stocks sold (highest first), within each supplier group
     window_spec = Window.partitionBy(col("supplier_id")).orderBy(desc("agg_total_stocks_sold"))
@@ -102,14 +108,12 @@ def suppliers_performance_ingestion():
     Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
                                             .filter("rnk = 1") \
                                             .drop(col("rnk")) \
-                                            .withColumn("performance_id", monotonically_increasing_id() + 1) \
                                             .withColumn("day_dt", current_date())
 
     # Process the Node : Shortcut_To_Suppliers_Performance_tgt - The Target desired table
     Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
                                                 .select(
                                                         col("day_dt").alias("DAY_DT"),
-                                                        col("performance_id").alias("PERFORMANCE_ID"),
                                                         col("supplier_id").alias("SUPPLIER_ID"),
                                                         col("supplier_name").alias("SUPPLIER_NAME"),
                                                         col("agg_total_revenue").alias("TOTAL_REVENUE"),
@@ -117,7 +121,7 @@ def suppliers_performance_ingestion():
                                                         col("agg_total_stocks_sold").alias("TOTAL_STOCKS_SOLD"),
                                                         col("product_name").alias("TOP_SELLING_PRODUCT")
                                                 )
-    logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built")
+    logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built...")
 
     logging.info("Authenticating to GCS to load the data into parquet file..")
     Shortcut_To_Suppliers_Performance_tgt.write.mode("append").parquet("gs://reporting-legacy/supplier_performance")
