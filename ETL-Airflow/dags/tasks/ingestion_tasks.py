@@ -113,12 +113,7 @@ def sales_data_ingestion():
     today = "20250328"
 
     # Create a spark session with the hadoop configurations and also authentic credentials
-    spark = SparkSession.builder.appName("GCS_to_Postgres") \
-        .config("spark.jars", "/usr/local/airflow/jars/postgresql-42.7.1.jar,/usr/local/airflow/jars/gcs-connector-hadoop3-latest.jar") \
-        .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
-        .config("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
-        .getOrCreate()
-    spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/usr/local/airflow/jars/meta-morph-d-eng-pro-admin.json")
+    spark = get_spark_session()
 
     # Create a data frame by reading the CSV from the Google Bucket
     sales_df = spark.read.csv(f'gs://meta-morph/{today}/sales_{today}.csv', header=True, inferSchema=True)

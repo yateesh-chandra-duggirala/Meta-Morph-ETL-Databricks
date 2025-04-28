@@ -6,7 +6,7 @@ from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
 # Create a task that helps in ingesting the data into Suppliers
-@task(task_id="m_load_suppliers_performance")
+@task(task_id="m_load_customer_sales_report")
 def customer_sales_report_ingestion():
 
     # Get a spark session
@@ -198,6 +198,10 @@ def customer_sales_report_ingestion():
 
     # Shortcut_To_Customer_Sales_Report_Tgt.
     logging.info(f"Data Frame : 'Shortcut_To_Customer_Sales_Report_Tgt' is built...")
+
+    logging.info("Authenticating to GCS to load the data into parquet file..")
+    Shortcut_To_Customer_Sales_Report_Tgt.write.mode("append").parquet("gs://reporting-legacy/customer_sales_report")
+    logging.info(f"Loaded into Parquet File : customer_sales_report")
 
     # Load the data into the table
     write_into_table("customer_sales_report", Shortcut_To_Customer_Sales_Report_Tgt, "legacy", "append")             
