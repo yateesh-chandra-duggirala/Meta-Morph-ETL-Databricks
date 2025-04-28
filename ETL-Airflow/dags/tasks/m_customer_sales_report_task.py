@@ -6,7 +6,7 @@ from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
 # Create a task that helps in ingesting the data into Suppliers
-@task(task_id="m_load_suppliers_performance")
+@task(task_id="m_load_customer_sales_report")
 def customer_sales_report_ingestion():
 
     # Get a spark session
