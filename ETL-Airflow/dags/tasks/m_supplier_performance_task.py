@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from utils import get_spark_session, write_into_table, abort_session, read_data
+from utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
@@ -123,13 +123,22 @@ def suppliers_performance_ingestion():
                                                 )
     logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built...")
 
-    logging.info("Authenticating to GCS to load the data into parquet file..")
-    Shortcut_To_Suppliers_Performance_tgt.write.mode("append").parquet("gs://reporting-legacy/supplier_performance")
-    logging.info(f"Loaded into Parquet File : supplier_performance")
+    try :
+        chk = DuplicateChecker()
+        chk.has_duplicates(Shortcut_To_Suppliers_Performance_tgt, ['DAY_DT','SUPPLIER_ID'])
+        logging.info("Duplicate Check successful.. No Duplicates found...")
+        logging.info("Authenticating to GCS to load the data into parquet file..")
+        Shortcut_To_Suppliers_Performance_tgt.write.mode("append").parquet("gs://reporting-legacy/supplier_performance")
+        logging.info(f"Loaded into Parquet File : supplier_performance")
 
-    # Load the data into the table
-    write_into_table("supplier_performance", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
+        # Load the data into the table
+        write_into_table("supplier_performance_test", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
 
-    # Abort the session when Done.
-    abort_session(spark)
+    except DuplicateException as e:
+        logging.error(str(e))
+        raise
+    
+    finally :
+        # Abort the session when Done.
+        abort_session(spark)
     return f"supplier_performance data ingested successfully!"

@@ -32,7 +32,7 @@ class APIClient:
 # Custom Exception raised when duplicates are found in the dataset
 class DuplicateException(Exception):
 
-    def __init__(self, message='Duplicates found in DataFrame.'):
+    def __init__(self, message='Duplicates found in Dataset.'):
         super().__init__(message)
 
 # Create a class named DuplicateChecker
