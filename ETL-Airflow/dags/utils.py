@@ -1,5 +1,6 @@
 import logging
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import *
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,6 +28,24 @@ class APIClient:
         except Exception as e:
             logging.error("Exception raised..!")
             raise e
+
+# Custom Exception raised when duplicates are found in the dataset
+class DuplicateException(Exception):
+
+    def __init__(self, message='Duplicates found in DataFrame.'):
+        super().__init__(message)
+
+# Create a class named DuplicateChecker
+class DuplicateChecker:
+
+    @classmethod
+    def has_duplicates(cls, df, primary_key_list : list):
+        grouped_df = df.groupBy(primary_key_list) \
+                            .agg(count('*').alias('cnt'))\
+                            .filter('cnt > 1')
+        if grouped_df.count() > 0 :
+            raise DuplicateException
+
 
 def get_spark_session() :
 
