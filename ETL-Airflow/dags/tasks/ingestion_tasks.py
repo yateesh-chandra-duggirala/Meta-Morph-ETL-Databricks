@@ -20,6 +20,7 @@ def supplier_data_ingestion():
 
     # Create a data frame from the response of the API
     suppliers_df = spark.createDataFrame(Row(**x) for x in response['data'])
+    logging.info("Data Frame : 'suppliers_df' is built")
 
     # Do the Transformations for the Suppliers Dataframe
     suppliers_df = suppliers_df\
@@ -27,7 +28,7 @@ def supplier_data_ingestion():
         .withColumnRenamed(suppliers_df.columns[1], "SUPPLIER_NAME")\
         .withColumnRenamed(suppliers_df.columns[2], "CONTACT_DETAILS")\
         .withColumnRenamed(suppliers_df.columns[3], "REGION")
-    logging.info(f"Writing into table: {api}")
+    logging.info("Data Frame : Transformed 'suppliers_df' is built")
 
     # Load the data into the table
     write_into_table(api, suppliers_df, "raw", "overwrite")
@@ -52,6 +53,7 @@ def customer_data_ingestion():
 
     # Create a data frame from the response of the API
     customer_df = spark.createDataFrame(Row(**x) for x in response['data'])
+    logging.info("Data Frame : 'customer_df' is built")
     
     # Do the transformations for the customers Dataframe
     customer_df = customer_df\
@@ -60,7 +62,7 @@ def customer_data_ingestion():
         .withColumnRenamed(customer_df.columns[2], "CITY")\
         .withColumnRenamed(customer_df.columns[3], "EMAIL")\
         .withColumnRenamed(customer_df.columns[4], "PHONE_NUMBER")
-    logging.info(f"Writing into table: {api}")
+    logging.info("Data Frame : Transformed 'customer_df' is built")
 
     # Load the data into the table
     write_into_table(api, customer_df, "raw", "overwrite")
@@ -85,6 +87,7 @@ def products_data_ingestion():
     
     # Create a data frame from the response of the API
     product_df = spark.createDataFrame(Row(**x) for x in response['data'])
+    logging.info("Data Frame : 'product_df' is built")
 
     # Do the Transformation for the product Dataframe
     product_df = product_df\
@@ -96,7 +99,7 @@ def products_data_ingestion():
         .withColumnRenamed(product_df.columns[5], "STOCK_QUANTITY")\
         .withColumnRenamed(product_df.columns[6], "REORDER_LEVEL")\
         .withColumnRenamed(product_df.columns[7], "SUPPLIER_ID")
-    logging.info(f"Writing into table: {api}")
+    logging.info("Data Frame : Transformed 'product_df' is built")
 
     # Load the data into the table
     write_into_table(api, product_df, "raw", "overwrite")
@@ -117,6 +120,7 @@ def sales_data_ingestion():
 
     # Create a data frame by reading the CSV from the Google Bucket
     sales_df = spark.read.csv(f'gs://meta-morph/{today}/sales_{today}.csv', header=True, inferSchema=True)
+    logging.info("Data Frame : 'sales_df' is built")
     
     api = "sales"
     logging.info("Reading the CSV File into dataframe...")
@@ -131,7 +135,7 @@ def sales_data_ingestion():
         .withColumnRenamed(sales_df.columns[6], "SHIPPING_COST")\
         .withColumnRenamed(sales_df.columns[7], "ORDER_STATUS")\
         .withColumnRenamed(sales_df.columns[8], "PAYMENT_MODE")
-    logging.info(f"Writing into table: {api}")
+    logging.info("Data Frame : Transformed 'sales_df' is built")
 
     # Load the data into the Table
     write_into_table(api, sales_df, "raw", "overwrite")

@@ -3,7 +3,6 @@ from airflow.decorators import task
 import logging
 from utils import get_spark_session, write_into_table, abort_session, read_data
 from pyspark.sql.functions import *
-from pyspark.sql.window import Window
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_load_products_performance")
@@ -24,6 +23,7 @@ def product_performance_ingestion():
                                     col("stock_quantity"),
                                     col("reorder_level")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
     SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
@@ -34,6 +34,7 @@ def product_performance_ingestion():
                                     col("quantity"),
                                     col("discount")
                                 )
+    logging.info(f"Data Frame : 'SQ_Shortcut_To_Sales' is built...")
 
     # Process the Node : JNR_Master - joins the 2 nodes and JNR_Supplier_Products and SQ_Shortcut_To_Sales
     JNR_Master = SQ_Shortcut_To_Products \
@@ -55,6 +56,7 @@ def product_performance_ingestion():
                                 SQ_Shortcut_To_Sales.quantity,
                                 SQ_Shortcut_To_Sales.discount
                             )
+    logging.info(f"Data Frame : 'JNR_Master' is built...")
 
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
@@ -72,9 +74,10 @@ def product_performance_ingestion():
 
                         coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")
                     )
+    logging.info(f"Data Frame : 'AGG_TRANS' is built...")
 
     # Assigns a rank to each product based on their product_id
-    Shortcut_To_Products_Performance_tgt = AGG_TRANS \
+    EXP_Products_Performance_tgt = AGG_TRANS \
                                             .withColumn(
                                                 "total_stocks_left", col("stock_quantity") - col("agg_total_quantity_sold")
                                             ) \
@@ -95,9 +98,10 @@ def product_performance_ingestion():
                                                     ), lit(0.0)
                                                 )
                                             )
+    logging.info(f"Data Frame : 'EXP_Products_Performance_tgt' is built...")
 
     # Process the Node : Shortcut_To_Products_Performance_tgt - The Target desired table
-    Shortcut_To_Products_Performance_tgt = Shortcut_To_Products_Performance_tgt \
+    Shortcut_To_Products_Performance_tgt = EXP_Products_Performance_tgt \
                                             .select(
                                                 col("day_dt").alias("DAY_DT"),
                                                 col("product_id").alias("PRODUCT_ID"),

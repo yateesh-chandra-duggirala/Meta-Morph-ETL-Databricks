@@ -61,6 +61,7 @@ def write_into_table(table, data_frame, schema, strategy):
 
     try : 
         logging.info("Connecting to PostgreSQL database using JDBC driver...")
+        logging.info(f"Established connection. Writing into {schema}.{table}")
         df = data_frame.write.format("jdbc")\
             .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
             .option("driver", "org.postgresql.Driver") \
