@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from utils import get_spark_session, write_into_table, abort_session, read_data
+from utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateException, DuplicateChecker
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
@@ -199,13 +199,29 @@ def customer_sales_report_ingestion():
     # Shortcut_To_Customer_Sales_Report_Tgt.
     logging.info(f"Data Frame : 'Shortcut_To_Customer_Sales_Report_Tgt' is built...")
 
-    logging.info("Authenticating to GCS to load the data into parquet file..")
-    Shortcut_To_Customer_Sales_Report_Tgt.write.mode("append").parquet("gs://reporting-legacy/customer_sales_report")
-    logging.info(f"Loaded into Parquet File : customer_sales_report")
+    try :
 
-    # Load the data into the table
-    write_into_table("customer_sales_report", Shortcut_To_Customer_Sales_Report_Tgt, "legacy", "append")             
+        # Implement the Duplicate checker
+        chk = DuplicateChecker()
+        chk.has_duplicates(Shortcut_To_Customer_Sales_Report_Tgt, ['DAY_DT','SALE_ID'])
+        
+        # Load the Data into Parquet File
+        logging.info("Authenticating to GCS to load the data into parquet file..")
+        Shortcut_To_Customer_Sales_Report_Tgt.write.mode("append").parquet("gs://reporting-legacy/customer_sales_report")
+        logging.info(f"Loaded into Parquet File : customer_sales_report")
 
-    # Abort the session when Done.
-    abort_session(spark)
+        # Load the data into the table
+        write_into_table("customer_sales_report", Shortcut_To_Customer_Sales_Report_Tgt, "legacy", "append")                     
+
+    except DuplicateException as e:
+
+        # Raise an exception if Duplicates are found
+        logging.error(str(e))
+        raise
+    
+    finally :
+
+        # Abort the session when Done.
+        abort_session(spark)
+
     return f"customer_sales_report data ingested successfully!"
