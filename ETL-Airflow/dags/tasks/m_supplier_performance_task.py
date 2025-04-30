@@ -135,7 +135,7 @@ def suppliers_performance_ingestion():
         logging.info(f"Loaded into Parquet File : supplier_performance")
 
         # Load the data into the table
-        write_into_table("supplier_performance_test", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
+        write_into_table("supplier_performance", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
 
     except DuplicateException as e:
 
