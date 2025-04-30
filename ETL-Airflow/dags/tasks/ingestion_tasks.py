@@ -1,8 +1,8 @@
 # Import libraries
 from airflow.decorators import task
-from pyspark.sql import Row, SparkSession
+from pyspark.sql import Row
 import logging
-from utils import get_spark_session, write_into_table, abort_session, APIClient
+from utils import get_spark_session, write_into_table, abort_session, APIClient, DuplicateChecker, DuplicateException
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_ingest_data_into_suppliers")
@@ -30,11 +30,26 @@ def supplier_data_ingestion():
         .withColumnRenamed(suppliers_df.columns[3], "REGION")
     logging.info("Data Frame : Transformed 'suppliers_df' is built")
 
-    # Load the data into the table
-    write_into_table(api, suppliers_df, "raw", "overwrite")
+    try :
 
-    # Abort the session when Done.
-    abort_session(spark)
+        # Implement the Duplicate checker
+        chk = DuplicateChecker()
+        chk.has_duplicates(suppliers_df, ['SUPPLIER_ID'])
+
+        # Load the data into the table
+        write_into_table(api, suppliers_df, "raw", "overwrite")
+
+    except DuplicateException as e:
+
+        # Raise an exception if Duplicates are found
+        logging.error(str(e))
+        raise
+
+    finally :
+
+        # Abort the session when Done.
+        abort_session(spark)
+
     return f"{api} data ingested successfully!"
 
 # Create a task that helps in ingesting the data into Customers
@@ -64,11 +79,26 @@ def customer_data_ingestion():
         .withColumnRenamed(customer_df.columns[4], "PHONE_NUMBER")
     logging.info("Data Frame : Transformed 'customer_df' is built")
 
-    # Load the data into the table
-    write_into_table(api, customer_df, "raw", "overwrite")
-    
-    # Abort the session when Done
-    abort_session(spark)
+    try :
+
+        # Implement the Duplicate checker
+        chk = DuplicateChecker()
+        chk.has_duplicates(customer_df, ['CUSTOMER_ID'])
+
+        # Load the data into the table
+        write_into_table(api, customer_df, "raw", "overwrite")
+
+    except DuplicateException as e:
+
+        # Raise an exception if Duplicates are found
+        logging.error(str(e))
+        raise
+
+    finally :
+
+        # Abort the session when Done.
+        abort_session(spark)
+
     return f"{api} data ingested successfully!"
 
 # Create a task that helps in ingesting the data into Products
@@ -101,11 +131,26 @@ def products_data_ingestion():
         .withColumnRenamed(product_df.columns[7], "SUPPLIER_ID")
     logging.info("Data Frame : Transformed 'product_df' is built")
 
-    # Load the data into the table
-    write_into_table(api, product_df, "raw", "overwrite")
-    
-    # Abort the session once Done
-    abort_session(spark)
+    try :
+
+        # Implement the Duplicate checker
+        chk = DuplicateChecker()
+        chk.has_duplicates(product_df, ['PRODUCT_ID'])
+
+        # Load the data into the table
+        write_into_table(api, product_df, "raw", "overwrite")
+
+    except DuplicateException as e:
+
+        # Raise an exception if Duplicates are found
+        logging.error(str(e))
+        raise
+
+    finally :
+
+        # Abort the session when Done.
+        abort_session(spark)
+
     return f"{api} data ingested successfully!"
 
 # Create a task that helps the data in ingesting the data into sales
@@ -137,9 +182,24 @@ def sales_data_ingestion():
         .withColumnRenamed(sales_df.columns[8], "PAYMENT_MODE")
     logging.info("Data Frame : Transformed 'sales_df' is built")
 
-    # Load the data into the Table
-    write_into_table(api, sales_df, "raw", "overwrite")
+    try :
 
-    # abort the session after Done
-    abort_session(spark)
+        # Implement the Duplicate checker
+        chk = DuplicateChecker()
+        chk.has_duplicates(sales_df, ['SALE_ID'])
+
+        # Load the data into the table
+        write_into_table(api, sales_df, "raw", "overwrite")
+
+    except DuplicateException as e:
+
+        # Raise an exception if Duplicates are found
+        logging.error(str(e))
+        raise
+
+    finally :
+
+        # Abort the session when Done.
+        abort_session(spark)
+
     return f"{api} data ingested successfully!"
