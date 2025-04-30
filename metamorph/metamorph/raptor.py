@@ -2,10 +2,8 @@ from utilities import *
 
 class Raptor:
 
-    def submit_raptor_request(self,source_type,source_sql,target_type,target_sql,primary_key,email=None,output_table_name_suffix="test"):
-
+    def submit_raptor_request(source_type,source_sql,target_type,target_sql,primary_key,email=None,output_table_name_suffix="test"):
         MST = pytz.timezone('US/Arizona')
-        spark.conf.set("spark.sql.shuffle.partitions","auto")
         runDate = format(datetime.now(timezone.utc).astimezone(MST).strftime("%m%d%Y_%H%M%S"))
         
         output_table_name_suffix = source_type+ "_vs_" + target_type +  "_"+ output_table_name_suffix + "_"+ runDate
@@ -41,23 +39,23 @@ class Raptor:
 
         df=df.withColumn("column_name",array([lit(i) for i in col_list]))
         col_mismatch_df=df.select(*uniqueKeyColumns,"source_value","target_value",element_at("column_name",col("column_name_index")).alias("mismatch_column_name"))
+
+        write_into_table("work.raptor_dataset_col_level_"+output_table_name_suffix, col_mismatch_df)
         
-        col_mismatch_df.write.mode("overwrite").option("mergeSchema",True).saveAsTable("qa_work.raptor_dataset_col_level_"+output_table_name_suffix)
+        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_col_level_"+output_table_name_suffix)
+
+        write_into_table("work.raptor_dataset_src_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
+        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         
-        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "qa_work.raptor_dataset_col_level_"+output_table_name_suffix)
-        
-        source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null").write.mode("overwrite").option("mergeSchema",True).saveAsTable("qa_work.raptor_dataset_src_extra_"+output_table_name_suffix)
-        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "qa_work.raptor_dataset_src_extra_"+output_table_name_suffix)
-        
-        source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null").write.mode("overwrite").option("mergeSchema",True).saveAsTable("qa_work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
+        write_into_table("work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
         print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "qa_work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         
         overall_summary_df = raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix)
         
         col_summary_df = raptor_column_summary(source,target,uniqueKeyColumns,col_mismatch_df,output_table_name_suffix)
-        
-        src_extra_df=spark.read.table("qa_work.raptor_dataset_src_extra_"+output_table_name_suffix).drop("Source_Record","Target_Record").limit(5)
-        tgt_extra_df=spark.read.table("qa_work.raptor_dataset_tgt_extra_"+output_table_name_suffix).drop("Source_Record","Target_Record").limit(5)
+
+        src_extra_df=read_from_table(spark,"work.raptor_dataset_src_extra_"+output_table_name_suffix).drop("Source_Record","Target_Record").limit(5)
+        tgt_extra_df=read_from_table(spark,"work.raptor_dataset_tgt_extra_"+output_table_name_suffix).drop("Source_Record","Target_Record").limit(5)
         
         email_results(overall_summary_df,col_mismatch_df,col_summary_df,src_extra_df,tgt_extra_df,output_table_name_suffix,email)
         
