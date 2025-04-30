@@ -124,9 +124,12 @@ def suppliers_performance_ingestion():
     logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built...")
 
     try :
+
+        # Implement the Duplicate checker
         chk = DuplicateChecker()
         chk.has_duplicates(Shortcut_To_Suppliers_Performance_tgt, ['DAY_DT','SUPPLIER_ID'])
-        logging.info("Duplicate Check successful.. No Duplicates found...")
+        
+        # Load the Data into Parquet File
         logging.info("Authenticating to GCS to load the data into parquet file..")
         Shortcut_To_Suppliers_Performance_tgt.write.mode("append").parquet("gs://reporting-legacy/supplier_performance")
         logging.info(f"Loaded into Parquet File : supplier_performance")
@@ -135,10 +138,14 @@ def suppliers_performance_ingestion():
         write_into_table("supplier_performance_test", Shortcut_To_Suppliers_Performance_tgt, "legacy", "append")
 
     except DuplicateException as e:
+
+        # Raise an exception if Duplicates are found
         logging.error(str(e))
         raise
     
     finally :
+
         # Abort the session when Done.
         abort_session(spark)
+
     return f"supplier_performance data ingested successfully!"
