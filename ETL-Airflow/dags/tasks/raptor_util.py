@@ -56,8 +56,6 @@ def read_from_table(spark, table) :
         raise e
     return df
 
-import psycopg2
-
 def ensure_schema_exists(schema):
     try:
         conn = psycopg2.connect(
@@ -97,15 +95,37 @@ def write_into_table(table, data_frame):
         raise e
     return df
 
+def get_gcs_data(reporting_file, sql):
+    logging.info("Connected with reporting location..!")
+    df = spark.read.parquet(f'gs://reporting-location/{reporting_file}', header=True, inferSchema=True)
+    logging.info("Data successfully brought from reporting..")
+    df.createOrReplaceTempView(f"reporting.{reporting_file}")
+    logging.info("Returned the Data from reporting..")
+    return spark.sql(sql)
+
 def raptor_data_fetch(source,sql):
   
-  if source.lower().strip() == "legacy":
-    dataframe  = read_data(spark, sql)
+    if source.lower().strip() == "legacy":
+        dataframe  = read_data(spark, sql)
     
-  else : 
-    raise Exception("Source not Supported")
-    
-  return dataframe
+    elif source.lower().strip() == "reporting":
+        try : 
+            if 'reporting.customer_sales_report' in sql:
+                dataframe = get_gcs_data('customer_sales_report', sql)
+            elif 'reporting.product_performance' in sql:
+                dataframe = get_gcs_data('product_performance', sql)
+            elif 'reporting.supplier_performance' in sql:
+                dataframe = get_gcs_data('supplier_performance', sql)
+            else : 
+                raise Exception("Reporting data does not exist ..!")
+        except Exception as e :
+            logging.error(e)
+
+        
+    else : 
+        raise Exception(f"Source ({source}) not Supported")
+        
+    return dataframe
 
 
 def send_alert_emails_html(subject,user_email,body):
