@@ -96,12 +96,15 @@ def write_into_table(table, data_frame):
     return df
 
 def get_gcs_data(reporting_file, sql):
-    logging.info("Connected with reporting location..!")
-    df = spark.read.parquet(f'gs://reporting-location/{reporting_file}', header=True, inferSchema=True)
+    logging.info("Connecting with reporting location..!")
+    df = spark.read.format("parquet") \
+                .option('header', 'True') \
+                .option('inferSchema','True') \
+                .load(f'gs://reporting-legacy/{reporting_file}')
     logging.info("Data successfully brought from reporting..")
-    df.createOrReplaceTempView(f"reporting.{reporting_file}")
+    df.createOrReplaceTempView(f"{reporting_file}")
     logging.info("Returned the Data from reporting..")
-    return spark.sql(sql)
+    return spark.sql(sql.replace(f'reporting.{reporting_file}',reporting_file))
 
 def raptor_data_fetch(source,sql):
   
@@ -157,19 +160,19 @@ def email_results(overall_summary_df, col_mismatch_df, col_summary_df, src_extra
             font-size: 14px;
         }
         th {
-            background-color: #d4ff00; /* Header background color */
+            background-color: #fffd75; /* Header background color */
             font-size: 16px;
             text-align: center;
             font-weight: bold;
         }
         td {
-            background-color: #05f5f1;
+            background-color: #edffff;
         }
         tr:nth-child(even) {
-            background-color: #05f5f1;
+            background-color: #edffff;
         }
         tr:nth-child(odd) {
-            background-color: #05f5f1;
+            background-color: #edffff;
         }
         h2 {
             color: #333333;
@@ -376,9 +379,9 @@ def trigger_raptor():
     raptor = Raptor()
     raptor.submit_raptor_request(
         source_type='legacy',
-        target_type='legacy',
-        source_sql="SELECT * FROM legacy.supplier_performance where \"DAY_DT\" = '2025-04-29'",
-        target_sql="SELECT * FROM legacy.supplier_performance_test where \"DAY_DT\" = '2025-04-29'",
+        target_type='reporting',
+        source_sql="SELECT * FROM legacy.supplier_performance ",
+        target_sql="SELECT * FROM reporting.supplier_performance ",
         email='yateed1437@gmail.com',
         output_table_name_suffix='SUPPLIER_PERFORMANCE_LGCY',
         primary_key='SUPPLIER_ID,DAY_DT'
