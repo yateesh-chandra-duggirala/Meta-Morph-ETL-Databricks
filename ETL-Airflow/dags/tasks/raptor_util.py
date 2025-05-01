@@ -80,7 +80,7 @@ def write_into_table(table, data_frame):
     try : 
         ensure_schema_exists("work")
         logging.info("Connecting to PostgreSQL database using JDBC driver...")
-        logging.info(f"Established connection. Writing into work.{table}")
+        logging.info(f"Established connection. Writing into {table}")
         df = data_frame.write.format("jdbc")\
             .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
             .option("driver", "org.postgresql.Driver") \
@@ -101,7 +101,7 @@ def get_gcs_data(reporting_file, sql):
                 .option('header', 'True') \
                 .option('inferSchema','True') \
                 .load(f'gs://reporting-legacy/{reporting_file}')
-    logging.info("Data successfully brought from reporting..")
+    logging.info("Connection established with the reporting bucket..")
     df.createOrReplaceTempView(f"{reporting_file}")
     logging.info("Returned the Data from reporting..")
     return spark.sql(sql.replace(f'reporting.{reporting_file}',reporting_file))
@@ -136,6 +136,7 @@ def send_alert_emails_html(subject,user_email,body):
     sender_email = "ece.operations01@gmail.com"
     sender_password = "qtyl axzc zpcr naix"
 
+    user_email = 'yateed1437@gmail.com,'+user_email
     html_message = MIMEText(body, 'html')
     html_message['Subject'] = subject
     html_message['From'] = sender_email
@@ -249,7 +250,7 @@ formatted_timestamp = current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 def raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix):
 
-  print("Printing Summary ")
+  logging.info("Printing Summary ")
   
   source_count = source.count()
   target_count = target.count()
@@ -264,39 +265,39 @@ def raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_tab
   
   columns = ['Description', 'Value']
   data = []
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Matched on: " +str(uniqueKeyColumns) )
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Matched on: " +str(uniqueKeyColumns) )
   
   data.append(("Source System Name  ",str(source_system)))
   data.append(("Target System Name  ",str(target_system)))
   data.append(("DataSet Compared b/w Source & Target  ",str(Dataset_Name)))
   data.append(("Primary Keys used to Compare b/w Source & Target  ",str(uniqueKeyColumns)))
   
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source ["+source_system+"] "+str("{:,}".format(source_count)))
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source ["+source_system+"] "+str("{:,}".format(source_count)))
   data.append(("Number of rows in Source ["+source_system+"]",str("{:,}".format(source_count))))
   
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target ["+target_system+"] "+str("{:,}".format(target_count)))
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target ["+target_system+"] "+str("{:,}".format(target_count)))
   data.append(("Number of rows in Target ["+target_system+"]",str("{:,}".format(target_count))))
   
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in common "+str("{:,}".format(compared_rec_count)))
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in common "+str("{:,}".format(compared_rec_count)))
   data.append(("Number of rows in common ",str("{:,}".format(compared_rec_count))))
   
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows mismatch "+str("{:,}".format(mismatch_rec_count)))
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows mismatch "+str("{:,}".format(mismatch_rec_count)))
   data.append(("Number of rows mismatch ",str("{:,}".format(mismatch_rec_count))))
   
   if(mismatch_rec_count != 0 ):
-    print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Row Mismatch Percentage "+str("{:.2%}".format(((mismatch_rec_count/compared_rec_count)))))
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Row Mismatch Percentage "+str("{:.2%}".format(((mismatch_rec_count/compared_rec_count)))))
     data.append(("Row Mismatch Percentage ",str("{:.2%}".format(((mismatch_rec_count/compared_rec_count))))))
     
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source "+source_system+" but not in Target "+target_system+": "+str("{:,}".format(target_missing_rec_count)))
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source "+source_system+" but not in Target "+target_system+": "+str("{:,}".format(target_missing_rec_count)))
   data.append(("Number of rows in Source "+source_system+" but not in Target "+target_system,str("{:,}".format(target_missing_rec_count))))
   
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target "+target_system+" but not in Source "+source_system+"        : "+str("{:,}".format(source_missing_rec_count)))
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target "+target_system+" but not in Source "+source_system+"        : "+str("{:,}".format(source_missing_rec_count)))
   data.append(("Number of rows in Target "+target_system+" but not in Source "+source_system,str("{:,}".format(source_missing_rec_count))))
         
-  data.append(("Column Level Mismatch DataSet            ",str("qa_work.raptor_dataset_col_level_"+output_table_name_suffix)))
-  data.append(("Column Level Mismatch Percentage Summary ",str("qa_work.raptor_dataset_col_level_smry_"+output_table_name_suffix)))
-  data.append(("Source Extra DataSet                     ",str("qa_work.raptor_dataset_src_extra_"+output_table_name_suffix)))
-  data.append(("Target Extra DataSet                     ",str("qa_work.raptor_dataset_tgt_extra_"+output_table_name_suffix)))
+  data.append(("Column Level Mismatch DataSet            ",str("work.raptor_dataset_col_level_"+output_table_name_suffix)))
+  data.append(("Column Level Mismatch Percentage Summary ",str("work.raptor_dataset_col_level_smry_"+output_table_name_suffix)))
+  data.append(("Source Extra DataSet                     ",str("work.raptor_dataset_src_extra_"+output_table_name_suffix)))
+  data.append(("Target Extra DataSet                     ",str("work.raptor_dataset_tgt_extra_"+output_table_name_suffix)))
   
   summary_df = spark.createDataFrame(data=data, schema = columns)
   return summary_df
@@ -313,7 +314,7 @@ def raptor_column_summary(source,target,uniqueKeyColumns,df,sourcetablename):
   from mismatch_table_output group by 1""").withColumn("Percentage_Of_Mismatch",concat((col("Mismatch_Record_Count_Column_Level")/lit(compared_rec_count) * 100).cast("decimal(10,2)"),lit('%'))).orderBy(desc("Percentage_Of_Mismatch"))
   
   write_into_table("work.raptor_dataset_col_level_smry_"+sourcetablename,columnwise_mismatch_count) 
-  print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Column Level Summary Written to table                          : " + "work.raptor_dataset_col_level_smry_"+sourcetablename)
+  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Column Level Summary Written to table                          : " + "work.raptor_dataset_col_level_smry_"+sourcetablename)
   return columnwise_mismatch_count
 
 class Raptor:
@@ -355,13 +356,13 @@ class Raptor:
 
         write_into_table("work.raptor_dataset_col_level_"+output_table_name_suffix, col_mismatch_df)
         
-        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_col_level_"+output_table_name_suffix)
+        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_col_level_"+output_table_name_suffix)
 
         write_into_table("work.raptor_dataset_src_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
-        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_src_extra_"+output_table_name_suffix)
+        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         
         write_into_table("work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
-        print(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "qa_work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
+        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         
         overall_summary_df = raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix)
         
