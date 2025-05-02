@@ -12,6 +12,7 @@ from pyspark.sql.types import *
 from pyspark.sql import SparkSession
 import logging
 import psycopg2
+from datetime import datetime
 
 spark = SparkSession.builder.appName("GCS_to_Postgres") \
     .config("spark.jars", "/usr/local/airflow/jars/postgresql-42.7.1.jar,/usr/local/airflow/jars/gcs-connector-hadoop3-latest.jar") \
@@ -20,6 +21,7 @@ spark = SparkSession.builder.appName("GCS_to_Postgres") \
     .getOrCreate()
 spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/usr/local/airflow/jars/meta-morph-d-eng-pro-admin.json")
 logging.info("Spark session Created")
+today = datetime.now().strftime("%Y%m%d")
 
 # Define a function to read the data from the Postgres Database
 def read_data(spark, query) :
@@ -105,6 +107,11 @@ def get_gcs_data(reporting_file, sql):
     df.createOrReplaceTempView(f"{reporting_file}")
     logging.info("Returned the Data from reporting..")
     return spark.sql(sql.replace(f'reporting.{reporting_file}',reporting_file))
+
+def write_into_gcs_data(df, work_location):
+    logging.info("Connecting to raptor-work...!")
+    df.write.mode("append").parquet(f"gs://raptor-work/{today}/{work_location}")
+    logging.info(f"successfully written into raptor-work")
 
 def raptor_data_fetch(source,sql):
   
@@ -313,6 +320,7 @@ def raptor_column_summary(source,target,uniqueKeyColumns,df,sourcetablename):
   ,count(*) as Mismatch_Record_Count_Column_Level 
   from mismatch_table_output group by 1""").withColumn("Percentage_Of_Mismatch",concat((col("Mismatch_Record_Count_Column_Level")/lit(compared_rec_count) * 100).cast("decimal(10,2)"),lit('%'))).orderBy(desc("Percentage_Of_Mismatch"))
   
+  write_into_gcs_data(columnwise_mismatch_count, "work.raptor_dataset_col_level_smry_"+sourcetablename)
   write_into_table("work.raptor_dataset_col_level_smry_"+sourcetablename,columnwise_mismatch_count) 
   logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Column Level Summary Written to table                          : " + "work.raptor_dataset_col_level_smry_"+sourcetablename)
   return columnwise_mismatch_count
@@ -354,13 +362,15 @@ class Raptor:
         df=df.withColumn("column_name",array([lit(i) for i in col_list]))
         col_mismatch_df=df.select(*uniqueKeyColumns,"source_value","target_value",element_at("column_name",col("column_name_index")).alias("mismatch_column_name"))
 
+        write_into_gcs_data(col_mismatch_df, "work.raptor_dataset_col_level_"+output_table_name_suffix)
         write_into_table("work.raptor_dataset_col_level_"+output_table_name_suffix, col_mismatch_df)
-        
         logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_col_level_"+output_table_name_suffix)
 
+        write_into_gcs_data(source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"), "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         write_into_table("work.raptor_dataset_src_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
         logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         
+        write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         write_into_table("work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
         logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         
