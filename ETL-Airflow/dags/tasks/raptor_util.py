@@ -1,13 +1,10 @@
-from datetime import timedelta,datetime,timezone,date
+from datetime import datetime,timezone
 from airflow.decorators import task
 from email.mime.text import MIMEText
-import pandas as pd
 import pytz
-from IPython.display import HTML
 from pyspark.sql.functions import *
 import smtplib
 from pyspark.sql.window import *
-# from delta.tables import *
 from pyspark.sql.types import *
 from pyspark.sql import SparkSession
 import logging
@@ -24,12 +21,12 @@ logging.info("Spark session Created")
 today = datetime.now().strftime("%Y%m%d")
 
 # Define a function to read the data from the Postgres Database
-def read_data(spark, query) :
+def read_data(spark, database, query) :
 
     try :
         logging.info("Connecting to PostgreSQL database using JDBC driver...")
         df = spark.read.format("jdbc")\
-            .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph")\
+            .option("url", f"jdbc:postgresql://host.docker.internal:5432/{database}")\
             .option("user", "postgres")\
             .option("password", "postgres")\
             .option("driver", "org.postgresql.Driver")\
@@ -113,24 +110,20 @@ def write_into_gcs_data(df, work_location):
     df.write.mode("append").parquet(f"gs://raptor-work/{today}/{work_location}")
     logging.info(f"successfully written into raptor-work")
 
-def raptor_data_fetch(source,sql):
+def raptor_data_fetch(source,source_db, sql):
   
-    if source.lower().strip() == "legacy":
-        dataframe  = read_data(spark, sql)
+    if source.lower().strip() == "pg_admin":
+        dataframe  = read_data(spark, source_db, sql)
     
     elif source.lower().strip() == "reporting":
         try : 
-            if 'reporting.customer_sales_report' in sql:
-                dataframe = get_gcs_data('customer_sales_report', sql)
-            elif 'reporting.product_performance' in sql:
-                dataframe = get_gcs_data('product_performance', sql)
-            elif 'reporting.supplier_performance' in sql:
-                dataframe = get_gcs_data('supplier_performance', sql)
+            table_name = sql.split('reporting.')[1].split(' ')[0].lower()
+            if 'reporting.' in sql:
+                dataframe = get_gcs_data(table_name, sql)
             else : 
                 raise Exception("Reporting data does not exist ..!")
         except Exception as e :
             logging.error(e)
-
         
     else : 
         raise Exception(f"Source ({source}) not Supported")
@@ -327,14 +320,14 @@ def raptor_column_summary(source,target,uniqueKeyColumns,df,sourcetablename):
 
 class Raptor:
 
-    def submit_raptor_request(self,source_type,source_sql,target_type,target_sql,primary_key,email=None,output_table_name_suffix="test"):
+    def submit_raptor_request(self,source_type,source_sql,target_type,target_sql,primary_key,source_db=None,target_db=None,email=None,output_table_name_suffix="test"):
         MST = pytz.timezone('US/Arizona')
         runDate = format(datetime.now(timezone.utc).astimezone(MST).strftime("%m%d%Y_%H%M%S"))
         
         output_table_name_suffix = source_type+ "_vs_" + target_type +  "_"+ output_table_name_suffix + "_"+ runDate
         
-        sourceDF = raptor_data_fetch(source_type,source_sql)
-        targetDF = raptor_data_fetch(target_type,target_sql)
+        sourceDF = raptor_data_fetch(source_type,source_db,source_sql)
+        targetDF = raptor_data_fetch(target_type,target_db,target_sql)
         
         sourceDF.cache()
         targetDF.cache()
@@ -389,11 +382,12 @@ def trigger_raptor():
 
     raptor = Raptor()
     raptor.submit_raptor_request(
-        source_type='legacy',
+        source_type='pg_admin',
+        source_db='meta_morph',
         target_type='reporting',
-        source_sql="SELECT * FROM legacy.supplier_performance ",
-        target_sql="SELECT * FROM reporting.supplier_performance ",
+        source_sql="SELECT * FROM legacy.customer_sales_report",
+        target_sql="SELECT * FROM reporting.customer_sales_report ",
         email='yateed1437@gmail.com',
-        output_table_name_suffix='SUPPLIER_PERFORMANCE_LGCY',
-        primary_key='SUPPLIER_ID,DAY_DT'
+        output_table_name_suffix='CUSTOMER_SALES_REPORT_LGCY_VS_REPORT',
+        primary_key='SALE_ID,DAY_DT'
     )
