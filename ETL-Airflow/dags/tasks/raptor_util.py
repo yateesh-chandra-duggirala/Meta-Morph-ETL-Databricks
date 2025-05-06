@@ -292,6 +292,7 @@ def raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_tab
     summary_df = spark.createDataFrame(data=data, schema = columns)
     return summary_df
 
+# Create a function to provide the raptor column summary
 def raptor_column_summary(username, password, database, source,target,uniqueKeyColumns,df,sourcetablename):
   
     df.createOrReplaceTempView("mismatch_table_output")
@@ -305,17 +306,20 @@ def raptor_column_summary(username, password, database, source,target,uniqueKeyC
     
     write_into_gcs_data(columnwise_mismatch_count, "work.raptor_dataset_col_level_smry_"+sourcetablename)
     write_into_table(username, password, database, "work.raptor_dataset_col_level_smry_"+sourcetablename,columnwise_mismatch_count) 
-    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Column Level Summary Written to table                          : " + "work.raptor_dataset_col_level_smry_"+sourcetablename)
+
     return columnwise_mismatch_count
 
+# Create a main Class Raptor which is the heart of the Package
 class Raptor:
 
-    def __init__(self, username, password, email=None):
+    # Raptor Class's Constructor
+    def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.email = email
 
+    # Provide the method to submit the raptor request
     def submit_raptor_request(self,source_type,source_sql,target_type,target_sql,primary_key,source_db=None,target_db=None,email=None,output_table_name_suffix="test"):
+
         MST = pytz.timezone('US/Arizona')
         runDate = format(datetime.now(timezone.utc).astimezone(MST).strftime("%m%d%Y_%H%M%S"))
         
@@ -354,15 +358,12 @@ class Raptor:
 
         write_into_gcs_data(col_mismatch_df, "work.raptor_dataset_col_level_"+output_table_name_suffix)
         write_into_table(self.username, self.password, db_name, "work.raptor_dataset_col_level_"+output_table_name_suffix, col_mismatch_df)
-        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_col_level_"+output_table_name_suffix)
 
         write_into_gcs_data(source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"), "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         write_into_table(self.username, self.password, db_name, "work.raptor_dataset_src_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
-        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         
         write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         write_into_table(self.username, self.password, db_name, "work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
-        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         
         overall_summary_df = raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix)
         
