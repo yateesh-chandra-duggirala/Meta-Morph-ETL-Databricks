@@ -79,6 +79,7 @@ def write_into_table(username, password, database, table, data_frame):
         raise e
     return df
 
+# Getting the data from the GCS Location
 def get_gcs_data(reporting_file, sql):
     logging.info("Connecting with reporting location..!")
     df = spark.read.format("parquet") \
@@ -90,11 +91,13 @@ def get_gcs_data(reporting_file, sql):
     logging.info("Returned the Data from reporting..")
     return spark.sql(sql.replace(f'reporting.{reporting_file}',reporting_file))
 
+# Writing the data into reporting parquet locations
 def write_into_gcs_data(df, work_location):
     logging.info("Connecting to raptor-work...!")
     df.write.mode("overwrite").parquet(f"gs://raptor-work/{today}/{work_location}")
     logging.info(f"successfully written into raptor-work")
 
+# Create a function named raptor_data_fetch to return the data frame based on the type of source
 def raptor_data_fetch(username, password, source,source_db, sql):
   
     if source.lower().strip() == "pg_admin":
@@ -115,7 +118,7 @@ def raptor_data_fetch(username, password, source,source_db, sql):
         
     return dataframe
 
-
+# This function is helpful to send the emails to the recipients
 def send_alert_emails_html(subject,user_email,body):
 
     sender_email = "ece.operations01@gmail.com"
@@ -131,6 +134,7 @@ def send_alert_emails_html(subject,user_email,body):
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, user_email.split(","), html_message.as_string())
 
+# This is the formatted email result to be sent to the Emails
 def email_results(overall_summary_df, col_mismatch_df, col_summary_df, src_extra_df, tgt_extra_df, output_table_name_suffix, email_address_list):
     # Define CSS for styling the email content
     email_styles = """
@@ -194,25 +198,25 @@ def email_results(overall_summary_df, col_mismatch_df, col_summary_df, src_extra
     # HTML structure for the email body
     mail_body = f"""
     <html>
-      <head>{email_styles}</head>
-      <body>
-        Hello,
+        <head>{email_styles}</head>
+        <body>
+            Hello,
 
-        <div class="section-title">Overall Summary</div>
-        {overall_summary_html}
+            <div class="section-title">Overall Summary</div>
+            {overall_summary_html}
 
-        <div class="section-title">Column Level Mismatch Summary</div>
-        {col_mismatch_html}
+            <div class="section-title">Column Level Mismatch Summary</div>
+            {col_mismatch_html}
 
-        <div class="section-title">Column Level Mismatch Percentage Summary</div>
-        {col_summary_html}
+            <div class="section-title">Column Level Mismatch Percentage Summary</div>
+            {col_summary_html}
 
-        <div class="section-title">Source Extra Records Sample</div>
-        {src_extra_html}
+            <div class="section-title">Source Extra Records Sample</div>
+            {src_extra_html}
 
-        <div class="section-title">Target Extra Records Sample</div>
-        {tgt_extra_html}
-      </body>
+            <div class="section-title">Target Extra Records Sample</div>
+            {tgt_extra_html}
+        </body>
     </html>
     """
 
@@ -233,75 +237,76 @@ def email_results(overall_summary_df, col_mismatch_df, col_summary_df, src_extra
 current_timestamp = datetime.now()
 formatted_timestamp = current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
+# Function to prepare the raptor result summary
 def raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix):
 
-  logging.info("Printing Summary ")
-  
-  source_count = source.count()
-  target_count = target.count()
-  compared_rec_count = source.join(target,uniqueKeyColumns).count()
-  mismatch_rec_count = validateData.count()
-  target_missing_rec_count= source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null").count()
-  source_missing_rec_count = source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null").count()
-  
-  source_system=str(output_table_name_suffix.split("_",1)[0])
-  target_system=str(output_table_name_suffix.split("_",3)[2])
-  Dataset_Name=str(output_table_name_suffix)
-  
-  columns = ['Description', 'Value']
-  data = []
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Matched on: " +str(uniqueKeyColumns) )
-  
-  data.append(("Source System Name  ",str(source_system)))
-  data.append(("Target System Name  ",str(target_system)))
-  data.append(("DataSet Compared b/w Source & Target  ",str(Dataset_Name)))
-  data.append(("Primary Keys used to Compare b/w Source & Target  ",str(uniqueKeyColumns)))
-  
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source ["+source_system+"] "+str("{:,}".format(source_count)))
-  data.append(("Number of rows in Source ["+source_system+"]",str("{:,}".format(source_count))))
-  
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target ["+target_system+"] "+str("{:,}".format(target_count)))
-  data.append(("Number of rows in Target ["+target_system+"]",str("{:,}".format(target_count))))
-  
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in common "+str("{:,}".format(compared_rec_count)))
-  data.append(("Number of rows in common ",str("{:,}".format(compared_rec_count))))
-  
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows mismatch "+str("{:,}".format(mismatch_rec_count)))
-  data.append(("Number of rows mismatch ",str("{:,}".format(mismatch_rec_count))))
-  
-  if(mismatch_rec_count != 0 ):
-    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Row Mismatch Percentage "+str("{:.2%}".format(((mismatch_rec_count/compared_rec_count)))))
-    data.append(("Row Mismatch Percentage ",str("{:.2%}".format(((mismatch_rec_count/compared_rec_count))))))
+    logging.info("Printing Summary ")
     
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source "+source_system+" but not in Target "+target_system+": "+str("{:,}".format(target_missing_rec_count)))
-  data.append(("Number of rows in Source "+source_system+" but not in Target "+target_system,str("{:,}".format(target_missing_rec_count))))
-  
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target "+target_system+" but not in Source "+source_system+"        : "+str("{:,}".format(source_missing_rec_count)))
-  data.append(("Number of rows in Target "+target_system+" but not in Source "+source_system,str("{:,}".format(source_missing_rec_count))))
+    source_count = source.count()
+    target_count = target.count()
+    compared_rec_count = source.join(target,uniqueKeyColumns).count()
+    mismatch_rec_count = validateData.count()
+    target_missing_rec_count= source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null").count()
+    source_missing_rec_count = source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null").count()
+    
+    source_system=str(output_table_name_suffix.split("_",1)[0])
+    target_system=str(output_table_name_suffix.split("_",3)[2])
+    Dataset_Name=str(output_table_name_suffix)
+    
+    columns = ['Description', 'Value']
+    data = []
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Matched on: " +str(uniqueKeyColumns) )
+    
+    data.append(("Source System Name  ",str(source_system)))
+    data.append(("Target System Name  ",str(target_system)))
+    data.append(("DataSet Compared b/w Source & Target  ",str(Dataset_Name)))
+    data.append(("Primary Keys used to Compare b/w Source & Target  ",str(uniqueKeyColumns)))
+    
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source ["+source_system+"] "+str("{:,}".format(source_count)))
+    data.append(("Number of rows in Source ["+source_system+"]",str("{:,}".format(source_count))))
+    
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target ["+target_system+"] "+str("{:,}".format(target_count)))
+    data.append(("Number of rows in Target ["+target_system+"]",str("{:,}".format(target_count))))
+    
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in common "+str("{:,}".format(compared_rec_count)))
+    data.append(("Number of rows in common ",str("{:,}".format(compared_rec_count))))
+    
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows mismatch "+str("{:,}".format(mismatch_rec_count)))
+    data.append(("Number of rows mismatch ",str("{:,}".format(mismatch_rec_count))))
+    
+    if(mismatch_rec_count != 0 ):
+        logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Row Mismatch Percentage "+str("{:.2%}".format(((mismatch_rec_count/compared_rec_count)))))
+        data.append(("Row Mismatch Percentage ",str("{:.2%}".format(((mismatch_rec_count/compared_rec_count))))))
         
-  data.append(("Column Level Mismatch DataSet            ",str("work.raptor_dataset_col_level_"+output_table_name_suffix)))
-  data.append(("Column Level Mismatch Percentage Summary ",str("work.raptor_dataset_col_level_smry_"+output_table_name_suffix)))
-  data.append(("Source Extra DataSet                     ",str("work.raptor_dataset_src_extra_"+output_table_name_suffix)))
-  data.append(("Target Extra DataSet                     ",str("work.raptor_dataset_tgt_extra_"+output_table_name_suffix)))
-  
-  summary_df = spark.createDataFrame(data=data, schema = columns)
-  return summary_df
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Source "+source_system+" but not in Target "+target_system+": "+str("{:,}".format(target_missing_rec_count)))
+    data.append(("Number of rows in Source "+source_system+" but not in Target "+target_system,str("{:,}".format(target_missing_rec_count))))
+    
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target "+target_system+" but not in Source "+source_system+"        : "+str("{:,}".format(source_missing_rec_count)))
+    data.append(("Number of rows in Target "+target_system+" but not in Source "+source_system,str("{:,}".format(source_missing_rec_count))))
+            
+    data.append(("Column Level Mismatch DataSet            ",str("work.raptor_dataset_col_level_"+output_table_name_suffix)))
+    data.append(("Column Level Mismatch Percentage Summary ",str("work.raptor_dataset_col_level_smry_"+output_table_name_suffix)))
+    data.append(("Source Extra DataSet                     ",str("work.raptor_dataset_src_extra_"+output_table_name_suffix)))
+    data.append(("Target Extra DataSet                     ",str("work.raptor_dataset_tgt_extra_"+output_table_name_suffix)))
+    
+    summary_df = spark.createDataFrame(data=data, schema = columns)
+    return summary_df
 
 def raptor_column_summary(username, password, database, source,target,uniqueKeyColumns,df,sourcetablename):
   
-  df.createOrReplaceTempView("mismatch_table_output")
-  
-  compared_rec_count = source.join(target,uniqueKeyColumns).count()
-  
-  columnwise_mismatch_count = spark.sql("""
-  select Mismatch_Column_Name
-  ,count(*) as Mismatch_Record_Count_Column_Level 
-  from mismatch_table_output group by 1""").withColumn("Percentage_Of_Mismatch",concat((col("Mismatch_Record_Count_Column_Level")/lit(compared_rec_count) * 100).cast("decimal(10,2)"),lit('%'))).orderBy(desc("Percentage_Of_Mismatch"))
-  
-  write_into_gcs_data(columnwise_mismatch_count, "work.raptor_dataset_col_level_smry_"+sourcetablename)
-  write_into_table(username, password, database, "work.raptor_dataset_col_level_smry_"+sourcetablename,columnwise_mismatch_count) 
-  logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Column Level Summary Written to table                          : " + "work.raptor_dataset_col_level_smry_"+sourcetablename)
-  return columnwise_mismatch_count
+    df.createOrReplaceTempView("mismatch_table_output")
+    
+    compared_rec_count = source.join(target,uniqueKeyColumns).count()
+    
+    columnwise_mismatch_count = spark.sql("""
+    select Mismatch_Column_Name
+    ,count(*) as Mismatch_Record_Count_Column_Level 
+    from mismatch_table_output group by 1""").withColumn("Percentage_Of_Mismatch",concat((col("Mismatch_Record_Count_Column_Level")/lit(compared_rec_count) * 100).cast("decimal(10,2)"),lit('%'))).orderBy(desc("Percentage_Of_Mismatch"))
+    
+    write_into_gcs_data(columnwise_mismatch_count, "work.raptor_dataset_col_level_smry_"+sourcetablename)
+    write_into_table(username, password, database, "work.raptor_dataset_col_level_smry_"+sourcetablename,columnwise_mismatch_count) 
+    logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Column Level Summary Written to table                          : " + "work.raptor_dataset_col_level_smry_"+sourcetablename)
+    return columnwise_mismatch_count
 
 class Raptor:
 
@@ -345,23 +350,25 @@ class Raptor:
         df=df.withColumn("column_name",array([lit(i) for i in col_list]))
         col_mismatch_df=df.select(*uniqueKeyColumns,"source_value","target_value",element_at("column_name",col("column_name_index")).alias("mismatch_column_name"))
 
+        db_name = source_db if source_db else target_db
+
         write_into_gcs_data(col_mismatch_df, "work.raptor_dataset_col_level_"+output_table_name_suffix)
-        write_into_table(self.username, self.password, source_db, "work.raptor_dataset_col_level_"+output_table_name_suffix, col_mismatch_df)
+        write_into_table(self.username, self.password, db_name, "work.raptor_dataset_col_level_"+output_table_name_suffix, col_mismatch_df)
         logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_col_level_"+output_table_name_suffix)
 
         write_into_gcs_data(source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"), "work.raptor_dataset_src_extra_"+output_table_name_suffix)
-        write_into_table(self.username, self.password, source_db, "work.raptor_dataset_src_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
+        write_into_table(self.username, self.password, db_name, "work.raptor_dataset_src_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
         logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_src_extra_"+output_table_name_suffix)
         
         write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
-        write_into_table(self.username, self.password, source_db, "work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
+        write_into_table(self.username, self.password, db_name, "work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
         logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Data Written to table : " + "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         
         overall_summary_df = raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix)
         
-        col_summary_df = raptor_column_summary(self.username, self.password, source_db, source,target,uniqueKeyColumns,col_mismatch_df,output_table_name_suffix)
+        col_summary_df = raptor_column_summary(self.username, self.password, db_name, source,target,uniqueKeyColumns,col_mismatch_df,output_table_name_suffix)
 
-        src_extra_df=read_data(self.username, self.password,spark,source_db,"work.raptor_dataset_src_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
-        tgt_extra_df=read_data(self.username, self.password,spark,source_db,"work.raptor_dataset_tgt_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
+        src_extra_df=read_data(self.username, self.password,spark,db_name,"work.raptor_dataset_src_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
+        tgt_extra_df=read_data(self.username, self.password,spark,db_name,"work.raptor_dataset_tgt_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
         
         email_results(overall_summary_df,col_mismatch_df,col_summary_df,src_extra_df,tgt_extra_df,output_table_name_suffix,email)
