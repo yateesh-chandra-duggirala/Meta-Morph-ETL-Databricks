@@ -4,11 +4,23 @@ from pyspark.sql.window import *
 from pyspark.sql.types import *
 from .my_secrets import USERNAME, PASSWORD
 from .raptor_util import Raptor
+from pyspark.sql import SparkSession
+import logging
 
 @task
 def trigger_raptor():
 
-    raptor = Raptor(username=USERNAME,
+    # Create the spark session
+    spark = SparkSession.builder.appName("GCS_to_Postgres") \
+        .config("spark.jars", "/usr/local/airflow/jars/postgresql-42.7.1.jar,/usr/local/airflow/jars/gcs-connector-hadoop3-latest.jar") \
+        .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
+        .config("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
+        .getOrCreate()
+    spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/usr/local/airflow/jars/meta-morph-d-eng-pro-admin.json")
+    logging.info("Spark session Created")
+
+    raptor = Raptor(spark=spark,
+                    username=USERNAME,
                     password=PASSWORD,)
     
     raptor.submit_raptor_request(

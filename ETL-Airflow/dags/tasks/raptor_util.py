@@ -11,13 +11,13 @@ import psycopg2
 from datetime import datetime
 
 # Create the spark session
-spark = SparkSession.builder.appName("GCS_to_Postgres") \
-    .config("spark.jars", "/usr/local/airflow/jars/postgresql-42.7.1.jar,/usr/local/airflow/jars/gcs-connector-hadoop3-latest.jar") \
-    .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
-    .config("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
-    .getOrCreate()
-spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/usr/local/airflow/jars/meta-morph-d-eng-pro-admin.json")
-logging.info("Spark session Created")
+# spark = SparkSession.builder.appName("GCS_to_Postgres") \
+#     .config("spark.jars", "/usr/local/airflow/jars/postgresql-42.7.1.jar,/usr/local/airflow/jars/gcs-connector-hadoop3-latest.jar") \
+#     .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
+#     .config("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
+#     .getOrCreate()
+# spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/usr/local/airflow/jars/meta-morph-d-eng-pro-admin.json")
+# logging.info("Spark session Created")
 today = datetime.now().strftime("%Y%m%d")
 
 # Define a function to read the data from the Postgres Database specified the query and database
@@ -80,7 +80,7 @@ def write_into_table(username, password, database, table, data_frame):
     return df
 
 # Getting the data from the GCS Location
-def get_gcs_data(reporting_file, sql):
+def get_gcs_data(spark, reporting_file, sql):
     logging.info("Connecting with reporting location..!")
     df = spark.read.format("parquet") \
                 .option('header', 'True') \
@@ -98,7 +98,7 @@ def write_into_gcs_data(df, work_location):
     logging.info(f"successfully written into raptor-work")
 
 # Create a function named raptor_data_fetch to return the data frame based on the type of source
-def raptor_data_fetch(username, password, source,source_db, sql):
+def raptor_data_fetch(spark, username, password, source,source_db, sql):
   
     if source.lower().strip() == "pg_admin":
         dataframe  = read_data(username, password, spark, source_db, sql, True)
@@ -107,7 +107,7 @@ def raptor_data_fetch(username, password, source,source_db, sql):
         try : 
             table_name = sql.split('reporting.')[1].split(' ')[0].lower()
             if 'reporting.' in sql:
-                dataframe = get_gcs_data(table_name, sql)
+                dataframe = get_gcs_data(spark, table_name, sql)
             else : 
                 raise Exception("Reporting data does not exist ..!")
         except Exception as e :
@@ -238,7 +238,7 @@ current_timestamp = datetime.now()
 formatted_timestamp = current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 # Function to prepare the raptor result summary
-def raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix):
+def raptor_result_summary(spark, validateData,source,target,uniqueKeyColumns,output_table_name_suffix):
 
     logging.info("Printing Summary ")
     
@@ -293,7 +293,7 @@ def raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_tab
     return summary_df
 
 # Create a function to provide the raptor column summary
-def raptor_column_summary(username, password, database, source,target,uniqueKeyColumns,df,sourcetablename):
+def raptor_column_summary(spark, username, password, database, source,target,uniqueKeyColumns,df,sourcetablename):
   
     df.createOrReplaceTempView("mismatch_table_output")
     
@@ -313,7 +313,8 @@ def raptor_column_summary(username, password, database, source,target,uniqueKeyC
 class Raptor:
 
     # Raptor Class's Constructor
-    def __init__(self, username, password):
+    def __init__(self, spark, username, password):
+        self.spark = spark
         self.username = username
         self.password = password
 
@@ -325,8 +326,8 @@ class Raptor:
         
         output_table_name_suffix = source_type+ "_vs_" + target_type +  "_"+ output_table_name_suffix + "_"+ runDate
         
-        sourceDF = raptor_data_fetch(self.username, self.password, source_type,source_db,source_sql)
-        targetDF = raptor_data_fetch(self.username, self.password, target_type,target_db,target_sql)
+        sourceDF = raptor_data_fetch(self.spark, self.username, self.password, source_type,source_db,source_sql)
+        targetDF = raptor_data_fetch(self.spark, self.username, self.password, target_type,target_db,target_sql)
         
         sourceDF.cache()
         targetDF.cache()
@@ -365,11 +366,11 @@ class Raptor:
         write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.raptor_dataset_tgt_extra_"+output_table_name_suffix)
         write_into_table(self.username, self.password, db_name, "work.raptor_dataset_tgt_extra_"+output_table_name_suffix, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
         
-        overall_summary_df = raptor_result_summary(validateData,source,target,uniqueKeyColumns,output_table_name_suffix)
+        overall_summary_df = raptor_result_summary(self.spark, validateData,source,target,uniqueKeyColumns,output_table_name_suffix)
         
-        col_summary_df = raptor_column_summary(self.username, self.password, db_name, source,target,uniqueKeyColumns,col_mismatch_df,output_table_name_suffix)
+        col_summary_df = raptor_column_summary(self.spark, self.username, self.password, db_name, source,target,uniqueKeyColumns,col_mismatch_df,output_table_name_suffix)
 
-        src_extra_df=read_data(self.username, self.password,spark,db_name,"work.raptor_dataset_src_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
-        tgt_extra_df=read_data(self.username, self.password,spark,db_name,"work.raptor_dataset_tgt_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
+        src_extra_df=read_data(self.username, self.password,self.spark,db_name,"work.raptor_dataset_src_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
+        tgt_extra_df=read_data(self.username, self.password,self.spark,db_name,"work.raptor_dataset_tgt_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
         
         email_results(overall_summary_df,col_mismatch_df,col_summary_df,src_extra_df,tgt_extra_df,output_table_name_suffix,email)
