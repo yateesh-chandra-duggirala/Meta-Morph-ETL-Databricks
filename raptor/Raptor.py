@@ -365,3 +365,4 @@ class Raptor:
         tgt_extra_df=_read_data(self.username, self.password,self.spark,db_name,"work.raptor_dataset_tgt_extra_"+output_table_name_suffix, False).drop("Source_Record","Target_Record").limit(5)
         
         _email_results(overall_summary_df,col_mismatch_df,col_summary_df,src_extra_df,tgt_extra_df,output_table_name_suffix,email)
+        return 'Email Report shared to the recipient..'
