@@ -309,6 +309,10 @@ class Raptor:
         self.username = username
         self.password = password
 
+    def wish(self, name):
+        print(f"Hello {name}, Thanks for trying Raptor Framework..")
+        return 'Success'
+
     # Provide the method to submit the raptor request
     def submit_raptor_request(self,source_type,source_sql,target_type,target_sql,primary_key,source_db=None,target_db=None,email=None,output_table_name_suffix="test"):
 

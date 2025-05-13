@@ -1,6 +1,6 @@
 google-cloud-storage
 sqlalchemy
-psycopg2
+psycopg2-binary
 google-auth
 google-auth-oauthlib
 google-auth-httplib2

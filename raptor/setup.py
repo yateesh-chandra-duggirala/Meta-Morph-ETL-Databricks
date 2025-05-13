@@ -1,5 +1,3 @@
-# setup.py
-
 from setuptools import setup, find_packages
 
 long_description = """
@@ -13,7 +11,7 @@ Data Raptor is a comparison utility which can be used to compare data between va
 
 setup(
     name="raptor",
-    version="1.2.3",
+    version="1.2.5",
     packages=find_packages(),
     description="A Utility for Data Comparison",
     long_description=long_description,
@@ -21,8 +19,7 @@ setup(
     author_email="yateed1437@gmail.com",
     install_requires=[
         "google-cloud-storage",
-        "sqlalchemy",
-        "psycopg2",
+        "psycopg2-binary",
         "google-auth",
         "google-auth-oauthlib",
         "google-auth-httplib2",

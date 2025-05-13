@@ -1,4 +1,6 @@
 setup.py
+Raptor/Raptor.py
+Raptor/__init__.py
 raptor.egg-info/PKG-INFO
 raptor.egg-info/SOURCES.txt
 raptor.egg-info/dependency_links.txt
