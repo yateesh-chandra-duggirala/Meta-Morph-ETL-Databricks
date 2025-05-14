@@ -2,7 +2,7 @@
 from airflow.decorators import task
 from pyspark.sql import Row
 import logging
-from utils import get_spark_session, write_into_table, abort_session, APIClient, DuplicateChecker, DuplicateException
+from tasks.utils import get_spark_session, write_into_table, abort_session, APIClient, DuplicateChecker, DuplicateException
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_ingest_data_into_suppliers")
