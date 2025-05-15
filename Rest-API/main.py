@@ -106,7 +106,7 @@ async def generate_data():
                 "Product Id": row[0],
                 "Product Name": row[1],
                 "Category": row[2],
-                "Price": price,
+                "Selling Price": price,
                 "Cost Price": round(price * random.uniform(0.45, 0.80), 2),
                 "Stock Quantity": random.randint(6000, 12000),
                 "Reorder Level": random.randint(10, 50),
