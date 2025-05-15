@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException
+from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 

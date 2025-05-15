@@ -2,10 +2,8 @@ from jose import jwt, JWTError
 from datetime import timedelta, datetime
 from fastapi import Header, HTTPException, status
 from typing import Annotated
+from my_secrets import *
 
-SECRET_KEY = "m728ve8!&4th*2yaHobam281_o903|r92p001/hhne"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
     to_encode = data.copy()

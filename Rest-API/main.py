@@ -8,11 +8,11 @@ from google.cloud import storage
 import io
 from fastapi import FastAPI, Depends
 from auth_utils import *
+from my_secrets import *
 
 # today = datetime.now().strftime("%Y%m%d")
 today = "20250328"
 print(today)
-key_path = "meta-morph-d-eng-pro-admin.json"
 
 # Create an object app for the FastAPI class
 app = FastAPI()
@@ -27,8 +27,8 @@ def get_data(relation, cnt):
     # Establish a connection with the postgres
     conn = psycopg2.connect(
         database = 'meta_morph',
-        user = 'postgres',
-        password = 'postgres',
+        user = USERNAME,
+        password = PASSWORD,
         host = 'localhost',
         port = '5432'
     )
@@ -56,7 +56,7 @@ async def gs_bucket_auth_save(sample, type_of_data):
     pd.DataFrame(sample).to_csv(csv_buffer, index=False)
 
     # Upload the content of BytesIO object to GCS
-    storage_client = storage.Client.from_service_account_json(key_path)
+    storage_client = storage.Client.from_service_account_json(SERVICE_KEY)
     bucket_name = "meta-morph"
     bucket = storage_client.bucket(bucket_name)
     destination_blob_name = f"{today}/{type_of_data}_{today}.csv"
@@ -178,7 +178,7 @@ async def generate_data():
 def files_check():
 
     # Authenticate using the service account
-    client = storage.Client.from_service_account_json(key_path)
+    client = storage.Client.from_service_account_json(SERVICE_KEY)
 
     # List files in the bucket
     bucket = client.get_bucket("meta-morph")
@@ -221,7 +221,7 @@ async def load_suppliers_data():
 
     df = pd.read_csv(f"gs://meta-morph/{today}/supplier_{today}.csv", 
                         storage_options={
-                            "token": key_path
+                            "token": SERVICE_KEY
                         }
                     ).set_index("Supplier Id")
 
@@ -234,7 +234,7 @@ async def load_products_data():
 
     df = pd.read_csv(f"gs://meta-morph/{today}/product_{today}.csv", 
                         storage_options={
-                            "token": key_path
+                            "token": SERVICE_KEY
                         }
                     ).set_index("Product Id")
 
@@ -246,7 +246,7 @@ async def load_products_data():
 async def load_customer_data(payload: dict = Depends(verify_token)):
     df = pd.read_csv(
         f"gs://meta-morph/{today}/customer_{today}.csv",
-        storage_options={"token": key_path}
+        storage_options={"token": SERVICE_KEY}
     ).set_index("Customer Id")
 
     customer_result = df.reset_index().to_dict(orient="records")

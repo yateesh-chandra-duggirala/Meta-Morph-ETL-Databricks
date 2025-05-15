@@ -2,6 +2,7 @@
 import logging
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
+from tasks.my_secrets import PASSWORD, USERNAME, SERVICE_KEY
 
 # Set the Level of logging to be INFO by default
 logging.basicConfig(level=logging.INFO)
@@ -78,7 +79,7 @@ def get_spark_session() :
     .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
     .config("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
     .getOrCreate()
-    spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/usr/local/airflow/jars/meta-morph-d-eng-pro-admin.json")
+    spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", f"/usr/local/airflow/jars/{SERVICE_KEY}")
     logging.info("Spark session Created")
     return spark
 
@@ -89,8 +90,8 @@ def read_data(spark, table) :
         logging.info("Connecting to PostgreSQL database using JDBC driver...")
         df = spark.read.format("jdbc")\
             .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph")\
-            .option("user", "postgres")\
-            .option("password", "postgres")\
+            .option("user", USERNAME)\
+            .option("password", PASSWORD)\
             .option("driver", "org.postgresql.Driver")\
             .option("dbtable", table)\
             .load()
@@ -110,8 +111,8 @@ def write_into_table(table, data_frame, schema, strategy):
             .option("url", "jdbc:postgresql://host.docker.internal:5432/meta_morph") \
             .option("driver", "org.postgresql.Driver") \
             .option("dbtable", f"{schema}.{table}") \
-            .option("user", "postgres") \
-            .option("password", "postgres") \
+            .option("user", USERNAME) \
+            .option("password", PASSWORD) \
             .mode(strategy) \
             .save()
         logging.info(f"Successfully Written {data_frame.count()} records into Table : {table}")

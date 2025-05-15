@@ -4,7 +4,7 @@ from pyspark.sql.window import *
 from pyspark.sql.types import *
 from tasks.my_secrets import USERNAME, PASSWORD
 from Raptor.Raptor import Raptor
-from dags.utils import get_spark_session
+from tasks.utils import get_spark_session
 
 @task
 def trigger_raptor():
@@ -22,7 +22,7 @@ def trigger_raptor():
         source_sql="SELECT * FROM legacy.supplier_performance",
         target_sql="SELECT * FROM reporting.supplier_performance ",
         email='yateed1437@gmail.com',
-        output_table_name='CUSTOMER_SALES_REPORT_LGCY_VS_REPORT',
+        output_table_name='supplier_performance_LGCY_VS_REPORT',
         primary_key='SUPPLIER_ID,DAY_DT'
     )
 
