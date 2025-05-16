@@ -28,7 +28,7 @@ def suppliers_performance_ingestion():
                                     col("product_id"),
                                     col("product_name"),
                                     col("supplier_id"),
-                                    col("price")
+                                    col("selling_price")
                                 )
     logging.info(f"Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
@@ -56,7 +56,7 @@ def suppliers_performance_ingestion():
                                 SQ_Shortcut_To_Suppliers.supplier_name,
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
-                                SQ_Shortcut_To_Products.price
+                                SQ_Shortcut_To_Products.selling_price
                             )
     logging.info(f"Data Frame : 'JNR_Supplier_Products' is built...")
 
@@ -72,7 +72,7 @@ def suppliers_performance_ingestion():
                                 JNR_Supplier_Products.supplier_id,
                                 JNR_Supplier_Products.supplier_name,
                                 JNR_Supplier_Products.product_name,
-                                JNR_Supplier_Products.price,
+                                JNR_Supplier_Products.selling_price,
                                 SQ_Shortcut_To_Sales.sale_id,
                                 SQ_Shortcut_To_Sales.order_status,
                                 SQ_Shortcut_To_Sales.quantity,
@@ -86,7 +86,7 @@ def suppliers_performance_ingestion():
                     .agg(
                         coalesce(
                             round(sum(
-                            (col("price") - (col("price") * col("discount") / 100.0)) * col("quantity")
+                            (col("selling_price") - (col("selling_price") * col("discount") / 100.0)) * col("quantity")
                             ),2), lit(0.0)
                         ).alias("agg_total_revenue"),
 
@@ -118,7 +118,7 @@ def suppliers_performance_ingestion():
                                                         col("supplier_name").alias("SUPPLIER_NAME"),
                                                         col("agg_total_revenue").alias("TOTAL_REVENUE"),
                                                         col("agg_total_products_sold").alias("TOTAL_PRODUCTS_SOLD"),
-                                                        col("agg_total_stocks_sold").alias("TOTAL_STOCKS_SOLD"),
+                                                        col("agg_total_stocks_sold").alias("TOTAL_STOCK_SOLD"),
                                                         col("product_name").alias("TOP_SELLING_PRODUCT")
                                                 )
     logging.info("Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built...")

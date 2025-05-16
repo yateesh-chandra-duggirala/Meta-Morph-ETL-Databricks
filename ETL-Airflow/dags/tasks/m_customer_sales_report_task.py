@@ -3,7 +3,6 @@ from airflow.decorators import task
 import logging
 from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateException, DuplicateChecker
 from pyspark.sql.functions import *
-from pyspark.sql.window import Window
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_load_customer_sales_report")
@@ -19,7 +18,7 @@ def customer_sales_report_ingestion():
                                     col("product_id"),
                                     col("product_name"),
                                     col("category"),
-                                    col("price")
+                                    col("selling_price")
                                 )
     logging.info(f"Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
@@ -104,22 +103,22 @@ def customer_sales_report_ingestion():
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
                                 SQ_Shortcut_To_Products.category,
-                                SQ_Shortcut_To_Products.price
+                                SQ_Shortcut_To_Products.selling_price
                             )
     logging.info(f"Data Frame : 'JNR_Master' is built...")
 
     # Process the Node : EXP_Add_Sales_Data - Adding new columns that comprise the Sales Info
     EXP_Add_Sales_Data = JNR_Master \
                             .withColumn("day_dt", current_date()) \
-                            .withColumn("sale_amount", col("quantity")*col("price")*(1-(col("discount")/100))) \
+                            .withColumn("sale_amount", col("quantity")*col("selling_price")*(1-(col("discount")/100))) \
                             .withColumn("sale_date", coalesce(col("sale_date"), current_date() - 1)) \
                             .withColumn("sale_year",year(col("sale_date"))) \
                             .withColumn("sale_month",date_format(col("sale_date"), "MMMM")) \
                             .withColumn("load_tstmp", current_timestamp()) \
                             .withColumn("top_performer",
-                                        when(col("product_name").isin(top_selling_products), True)
-                                        .otherwise(False)
-                                        )
+                                when(col("product_name").isin(top_selling_products), True)
+                                .otherwise(False)
+                            )
     logging.info(f"Data Frame : 'EXP_Add_Sales_Data' is built...")
 
     # Process the Node : AGG_TRANS_Customer
@@ -137,11 +136,11 @@ def customer_sales_report_ingestion():
 
     # Process the Node : EXP_Customer_Sales_Report - Add the Loyalty_Tier column
     EXP_Customer_Sales_Report = AGG_TRANS_Customer \
-                    .withColumn("loyalty_tier", 
-                                    when(col("sum_sales_amount") > gold_tier, "GOLD")
-                                    .when(col("sum_sales_amount").between(silver_tier,gold_tier),"SILVER")
-                                    .otherwise("BRONZE")
-                                )
+                                    .withColumn("loyalty_tier", 
+                                        when(col("sum_sales_amount") > gold_tier, "GOLD")
+                                        .when(col("sum_sales_amount").between(silver_tier,gold_tier),"SILVER")
+                                        .otherwise("BRONZE")
+                                    )
     logging.info(f"Data Frame : 'EXP_Customer_Sales_Report' is built...")
 
     # Process the Node : JNR_Sales_Customer_Report - that joins the data
@@ -164,7 +163,7 @@ def customer_sales_report_ingestion():
                                         col("a.product_id"),
                                         col("a.product_name"),
                                         col("a.category"),
-                                        col("a.price"),
+                                        col("a.selling_price"),
                                         col("a.day_dt"),
                                         col("a.sale_amount"),
                                         col("a.sale_year"),
@@ -189,7 +188,7 @@ def customer_sales_report_ingestion():
                                                     col("sale_month").alias("SALE_MONTH"),
                                                     col("sale_year").alias("SALE_YEAR"),
                                                     col("quantity").alias("QUANTITY"),
-                                                    col("price").alias("PRICE"),
+                                                    col("selling_price").alias("SELLING_PRICE"),
                                                     col("sale_amount").alias("SALE_AMOUNT"),
                                                     col("loyalty_tier").alias("LOYALTY_TIER"),
                                                     col("top_performer").alias("TOP_PERFORMER"),

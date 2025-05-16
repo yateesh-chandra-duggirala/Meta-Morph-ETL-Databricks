@@ -17,7 +17,7 @@ def product_performance_ingestion():
                                 .select(
                                     col("product_id"),
                                     col("product_name"),
-                                    col("price"),
+                                    col("selling_price"),
                                     col("cost_price"),
                                     col("category"),
                                     col("stock_quantity"),
@@ -47,7 +47,7 @@ def product_performance_ingestion():
                             .select(
                                 SQ_Shortcut_To_Products.product_id,
                                 SQ_Shortcut_To_Products.product_name,
-                                SQ_Shortcut_To_Products.price,
+                                SQ_Shortcut_To_Products.selling_price,
                                 SQ_Shortcut_To_Products.cost_price,
                                 SQ_Shortcut_To_Products.category,
                                 SQ_Shortcut_To_Products.stock_quantity,
@@ -64,12 +64,12 @@ def product_performance_ingestion():
                     .agg(
                         coalesce(
                             round(sum(
-                            (col("price") - (col("price") * col("discount") / lit(100.0))) * col("quantity")
+                            (col("selling_price") - (col("selling_price") * col("discount") / lit(100.0))) * col("quantity")
                             ),2), lit(0.0)
                         ).alias("agg_total_sales_amount"),
 
                         coalesce(
-                            round(avg(col("price")), 2), lit(0.0)
+                            round(avg(col("selling_price")), 2), lit(0.0)
                         ).alias("agg_average_sale_price"),
 
                         coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")

@@ -24,10 +24,10 @@ def supplier_data_ingestion():
 
     # Do the Transformations for the Suppliers Dataframe
     suppliers_df = suppliers_df\
-        .withColumnRenamed(suppliers_df.columns[0], "SUPPLIER_ID")\
-        .withColumnRenamed(suppliers_df.columns[1], "SUPPLIER_NAME")\
-        .withColumnRenamed(suppliers_df.columns[2], "CONTACT_DETAILS")\
-        .withColumnRenamed(suppliers_df.columns[3], "REGION")
+                    .withColumnRenamed(suppliers_df.columns[0], "SUPPLIER_ID")\
+                    .withColumnRenamed(suppliers_df.columns[1], "SUPPLIER_NAME")\
+                    .withColumnRenamed(suppliers_df.columns[2], "CONTACT_DETAILS")\
+                    .withColumnRenamed(suppliers_df.columns[3], "REGION")
     logging.info("Data Frame : Transformed 'suppliers_df' is built")
 
     try :
@@ -72,11 +72,11 @@ def customer_data_ingestion():
     
     # Do the transformations for the customers Dataframe
     customer_df = customer_df\
-        .withColumnRenamed(customer_df.columns[0], "CUSTOMER_ID")\
-        .withColumnRenamed(customer_df.columns[1], "NAME")\
-        .withColumnRenamed(customer_df.columns[2], "CITY")\
-        .withColumnRenamed(customer_df.columns[3], "EMAIL")\
-        .withColumnRenamed(customer_df.columns[4], "PHONE_NUMBER")
+                    .withColumnRenamed(customer_df.columns[0], "CUSTOMER_ID")\
+                    .withColumnRenamed(customer_df.columns[1], "NAME")\
+                    .withColumnRenamed(customer_df.columns[2], "CITY")\
+                    .withColumnRenamed(customer_df.columns[3], "EMAIL")\
+                    .withColumnRenamed(customer_df.columns[4], "PHONE_NUMBER")
     logging.info("Data Frame : Transformed 'customer_df' is built")
 
     try :
@@ -121,14 +121,14 @@ def products_data_ingestion():
 
     # Do the Transformation for the product Dataframe
     product_df = product_df\
-        .withColumnRenamed(product_df.columns[0], "PRODUCT_ID")\
-        .withColumnRenamed(product_df.columns[1], "PRODUCT_NAME")\
-        .withColumnRenamed(product_df.columns[2], "CATEGORY")\
-        .withColumnRenamed(product_df.columns[3], "PRICE")\
-        .withColumnRenamed(product_df.columns[4], "COST_PRICE")\
-        .withColumnRenamed(product_df.columns[5], "STOCK_QUANTITY")\
-        .withColumnRenamed(product_df.columns[6], "REORDER_LEVEL")\
-        .withColumnRenamed(product_df.columns[7], "SUPPLIER_ID")
+                    .withColumnRenamed(product_df.columns[0], "PRODUCT_ID")\
+                    .withColumnRenamed(product_df.columns[1], "PRODUCT_NAME")\
+                    .withColumnRenamed(product_df.columns[2], "CATEGORY")\
+                    .withColumnRenamed(product_df.columns[3], "SELLING_PRICE")\
+                    .withColumnRenamed(product_df.columns[4], "COST_PRICE")\
+                    .withColumnRenamed(product_df.columns[5], "STOCK_QUANTITY")\
+                    .withColumnRenamed(product_df.columns[6], "REORDER_LEVEL")\
+                    .withColumnRenamed(product_df.columns[7], "SUPPLIER_ID")
     logging.info("Data Frame : Transformed 'product_df' is built")
 
     try :
@@ -171,15 +171,15 @@ def sales_data_ingestion():
     logging.info("Reading the CSV File into dataframe...")
     # Do the Transformation for the Sales Dataframe
     sales_df = sales_df\
-        .withColumnRenamed(sales_df.columns[0], "SALE_ID")\
-        .withColumnRenamed(sales_df.columns[1], "CUSTOMER_ID")\
-        .withColumnRenamed(sales_df.columns[2], "PRODUCT_ID")\
-        .withColumnRenamed(sales_df.columns[3], "SALE_DATE")\
-        .withColumnRenamed(sales_df.columns[4], "QUANTITY")\
-        .withColumnRenamed(sales_df.columns[5], "DISCOUNT")\
-        .withColumnRenamed(sales_df.columns[6], "SHIPPING_COST")\
-        .withColumnRenamed(sales_df.columns[7], "ORDER_STATUS")\
-        .withColumnRenamed(sales_df.columns[8], "PAYMENT_MODE")
+                .withColumnRenamed(sales_df.columns[0], "SALE_ID")\
+                .withColumnRenamed(sales_df.columns[1], "CUSTOMER_ID")\
+                .withColumnRenamed(sales_df.columns[2], "PRODUCT_ID")\
+                .withColumnRenamed(sales_df.columns[3], "SALE_DATE")\
+                .withColumnRenamed(sales_df.columns[4], "QUANTITY")\
+                .withColumnRenamed(sales_df.columns[5], "DISCOUNT")\
+                .withColumnRenamed(sales_df.columns[6], "SHIPPING_COST")\
+                .withColumnRenamed(sales_df.columns[7], "ORDER_STATUS")\
+                .withColumnRenamed(sales_df.columns[8], "PAYMENT_MODE")
     logging.info("Data Frame : Transformed 'sales_df' is built")
 
     try :
