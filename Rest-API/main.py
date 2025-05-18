@@ -156,14 +156,24 @@ async def generate_data():
         quantity = random.randint(1, 20)
         discount = round(random.uniform(0, 17), 2)
         shipping_cost = round(random.uniform(5, 50), 2)
-        order_status = random.choice(["Pending", "Shipped", "Delivered", "Cancelled"])
         payment_mode = random.choice(["Credit Card", "Debit Card", "UPI", "Cash on Delivery"])
+
+        # Generate realistic sale date
+        sale_date_obj = fake.date_between(start_date="-2y", end_date="today")
+        sale_date_str = sale_date_obj.strftime("%Y-%m-%d")
+        days_ago = (datetime.today().date() - sale_date_obj).days
+
+        # Conditional Order Status based on how recent the order is
+        if days_ago <= 50:
+            order_status = random.choices(["Pending", "Shipped"], weights=[70, 30], k=1)[0]
+        else:
+            order_status = random.choices(["Delivered", "Cancelled"], weights=[90, 10], k=1)[0]
 
         sales_sample.append({
             "Sale Id": sale_id,
             "Customer Id": random.choice(customer_id_list),
             "Product Id": random.choice(product_id_list),
-            "Sale Date": random.choice([fake.date_between(start_date="-2y", end_date="today").strftime("%Y-%m-%d"), ""]),
+            "Sale Date": sale_date_str,
             "Quantity": quantity,
             "Discount": discount,
             "Shipping Cost": shipping_cost,
