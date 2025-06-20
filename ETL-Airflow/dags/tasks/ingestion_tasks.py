@@ -164,7 +164,7 @@ def sales_data_ingestion():
     spark = get_spark_session()
 
     # Create a data frame by reading the CSV from the Google Bucket
-    sales_df = spark.read.csv(f'gs://meta-morph/{today}/sales_{today}.csv', header=True, inferSchema=True)
+    sales_df = spark.read.csv(f'gs://meta-morph-flow/{today}/sales_{today}.csv', header=True, inferSchema=True)
     logging.info("Data Frame : 'sales_df' is built")
     
     api = "sales"

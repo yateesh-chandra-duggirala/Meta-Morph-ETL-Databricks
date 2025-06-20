@@ -126,7 +126,7 @@ def product_performance_ingestion():
         
         # Load the Data into Parquet File
         logging.info("Authenticating to GCS to load the data into parquet file..")
-        Shortcut_To_Products_Performance_tgt.write.mode("append").parquet("gs://reporting-legacy/product_performance")
+        Shortcut_To_Products_Performance_tgt.write.mode("append").parquet("gs://reporting-lgcy/product_performance")
         logging.info(f"Loaded into Parquet File : product_performance")
 
         # Load the data into the table

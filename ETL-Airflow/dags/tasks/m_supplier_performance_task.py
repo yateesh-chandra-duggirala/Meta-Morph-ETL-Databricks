@@ -131,7 +131,7 @@ def suppliers_performance_ingestion():
         
         # Load the Data into Parquet File
         logging.info("Authenticating to GCS to load the data into parquet file..")
-        Shortcut_To_Suppliers_Performance_tgt.write.mode("append").parquet("gs://reporting-legacy/supplier_performance")
+        Shortcut_To_Suppliers_Performance_tgt.write.mode("append").parquet("gs://reporting-lgcy/supplier_performance")
         logging.info(f"Loaded into Parquet File : supplier_performance")
 
         # Load the data into the table
