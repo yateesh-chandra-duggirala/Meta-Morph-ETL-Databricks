@@ -57,7 +57,7 @@ async def gs_bucket_auth_save(sample, type_of_data):
 
     # Upload the content of BytesIO object to GCS
     storage_client = storage.Client.from_service_account_json(SERVICE_KEY)
-    bucket_name = "meta-morph"
+    bucket_name = "meta-morph-flow"
     bucket = storage_client.bucket(bucket_name)
     destination_blob_name = f"{today}/{type_of_data}_{today}.csv"
     blob = bucket.blob(destination_blob_name)
@@ -191,7 +191,7 @@ def files_check():
     client = storage.Client.from_service_account_json(SERVICE_KEY)
 
     # List files in the bucket
-    bucket = client.get_bucket("meta-morph")
+    bucket = client.get_bucket("meta-morph-flow")
     blobs = bucket.list_blobs()
     server_ready = False
 
@@ -225,11 +225,11 @@ def generate_token():
     token = create_access_token(data)
     return {"access_token": token}
 
-# suppliers API to fetch the latest supplier data from the meta-morph bucket
+# suppliers API to fetch the latest supplier data from the meta-morph-flow bucket
 @app.get("/v1/suppliers")
 async def load_suppliers_data():
 
-    df = pd.read_csv(f"gs://meta-morph/{today}/supplier_{today}.csv", 
+    df = pd.read_csv(f"gs://meta-morph-flow/{today}/supplier_{today}.csv", 
                         storage_options={
                             "token": SERVICE_KEY
                         }
@@ -238,11 +238,11 @@ async def load_suppliers_data():
     supplier_result = df.reset_index().to_dict(orient="records")
     return {"status" : 200, "data" : supplier_result}
 
-# products API to fetch the latest product data from the meta-morph bucket
+# products API to fetch the latest product data from the meta-morph-flow bucket
 @app.get("/v1/products")
 async def load_products_data():
 
-    df = pd.read_csv(f"gs://meta-morph/{today}/product_{today}.csv", 
+    df = pd.read_csv(f"gs://meta-morph-flow/{today}/product_{today}.csv", 
                         storage_options={
                             "token": SERVICE_KEY
                         }
@@ -251,11 +251,11 @@ async def load_products_data():
     product_result = df.reset_index().to_dict(orient="records")
     return {"status" : 200, "data" : product_result}
 
-# customers API to fetch the latest customer data from the meta-morph bucket
+# customers API to fetch the latest customer data from the meta-morph-flow bucket
 @app.get("/v1/customers")
 async def load_customer_data(payload: dict = Depends(verify_token)):
     df = pd.read_csv(
-        f"gs://meta-morph/{today}/customer_{today}.csv",
+        f"gs://meta-morph-flow/{today}/customer_{today}.csv",
         storage_options={"token": SERVICE_KEY}
     ).set_index("Customer Id")
 

@@ -76,7 +76,7 @@ def _get_gcs_data(spark, reporting_file, sql):
     df = spark.read.format("parquet") \
                 .option('header', 'True') \
                 .option('inferSchema','True') \
-                .load(f'gs://reporting-legacy/{reporting_file}')
+                .load(f'gs://reporting-lgcy/{reporting_file}')
     logging.info("Connection established with the reporting bucket..")
     df.createOrReplaceTempView(f"{reporting_file}")
     logging.info("Returned the Data from reporting..")
