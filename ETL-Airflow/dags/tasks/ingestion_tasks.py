@@ -3,7 +3,7 @@ from airflow.decorators import task
 from pyspark.sql import Row
 from pyspark.sql.functions import current_date, col
 import logging
-from tasks.utils import get_spark_session, write_into_table, abort_session, APIClient, DuplicateChecker, DuplicateException
+from tasks.utils import get_spark_session, write_into_table, abort_session, APIClient, DuplicateChecker, DuplicateException, write_to_gcs
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_ingest_data_into_suppliers")
@@ -47,6 +47,9 @@ def supplier_data_ingestion():
         # Implement the Duplicate checker
         chk = DuplicateChecker()
         chk.has_duplicates(suppliers_df, ['SUPPLIER_ID'])
+
+        # Write the Data into GCS Reporting
+        write_to_gcs(suppliers_df_lgcy, api)
 
         # Load the data into the tables
         write_into_table("suppliers_pre", suppliers_df, "raw", "overwrite")
@@ -109,6 +112,9 @@ def customer_data_ingestion():
         # Implement the Duplicate checker
         chk = DuplicateChecker()
         chk.has_duplicates(customer_df, ['CUSTOMER_ID'])
+
+        # Write the Data into GCS Reporting
+        write_to_gcs(customer_df_lgcy, api)
 
         # Load the data into the tables
         write_into_table("customers_pre", customer_df, "raw", "overwrite")
@@ -178,6 +184,9 @@ def products_data_ingestion():
         chk = DuplicateChecker()
         chk.has_duplicates(product_df, ['PRODUCT_ID'])
 
+        # Write the Data into GCS Reporting
+        write_to_gcs(product_df_lgcy, api)
+
         # Load the data into the tables
         write_into_table("products_pre", product_df, "raw", "overwrite")
         write_into_table(api, product_df_lgcy, "legacy", "append")
@@ -245,6 +254,9 @@ def sales_data_ingestion():
         # Implement the Duplicate checker
         chk = DuplicateChecker()
         chk.has_duplicates(sales_df, ['SALE_ID'])
+
+        # Write the Data into GCS Reporting
+        write_to_gcs(sales_df_lgcy, api)
 
         # Load the data into the table
         write_into_table("sales_pre", sales_df, "raw", "overwrite")
