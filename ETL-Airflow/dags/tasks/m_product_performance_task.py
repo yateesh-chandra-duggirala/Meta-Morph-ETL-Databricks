@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException
+from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs
 from pyspark.sql.functions import *
 
 # Create a task that helps in ingesting the data into Suppliers
@@ -125,9 +125,7 @@ def product_performance_ingestion():
         chk.has_duplicates(Shortcut_To_Products_Performance_tgt, ['DAY_DT','PRODUCT_ID'])
         
         # Load the Data into Parquet File
-        logging.info("Authenticating to GCS to load the data into parquet file..")
-        Shortcut_To_Products_Performance_tgt.write.mode("append").parquet("gs://reporting-lgcy/product_performance")
-        logging.info(f"Loaded into Parquet File : product_performance")
+        write_to_gcs(Shortcut_To_Products_Performance_tgt, "product_performance")
 
         # Load the data into the table
         write_into_table("product_performance", Shortcut_To_Products_Performance_tgt, "legacy", "append")        

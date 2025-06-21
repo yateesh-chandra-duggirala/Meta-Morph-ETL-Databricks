@@ -121,6 +121,11 @@ def write_into_table(table, data_frame, schema, strategy):
         raise e
     return df
 
+def write_to_gcs(dataframe, location):
+        logging.info("Authenticating to GCS to load the data into parquet file..")
+        dataframe.write.mode("append").parquet(f"gs://reporting-lgcy/{location}")
+        logging.info(f"Loaded into Parquet File : {location}")
+
 # Define Function to abort the Spark Session used up to the instance
 def abort_session(spark):
     spark.stop()
