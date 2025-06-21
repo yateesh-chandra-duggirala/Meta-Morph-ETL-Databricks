@@ -12,7 +12,7 @@ def product_performance_ingestion():
     spark = get_spark_session()
 
     # Process the Node : SQ_Shortcut_To_Products - reads data from Products Table
-    SQ_Shortcut_To_Products = read_data(spark,"raw.products")
+    SQ_Shortcut_To_Products = read_data(spark,"raw.products_pre")
     SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
                                 .select(
                                     col("product_id"),
@@ -26,7 +26,7 @@ def product_performance_ingestion():
     logging.info(f"Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales Table
-    SQ_Shortcut_To_Sales = read_data(spark,"raw.sales")
+    SQ_Shortcut_To_Sales = read_data(spark,"raw.sales_pre")
     SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
                                 .select(
                                     col("product_id"),
