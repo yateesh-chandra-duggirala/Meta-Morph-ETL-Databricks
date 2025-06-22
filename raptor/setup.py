@@ -11,7 +11,7 @@ Data Raptor is a comparison utility which can be used to compare data between va
 
 setup(
     name="raptor",
-    version="1.2.6",
+    version="1.2.7",
     packages=find_packages(),
     description="A Utility for Data Comparison",
     long_description=long_description,

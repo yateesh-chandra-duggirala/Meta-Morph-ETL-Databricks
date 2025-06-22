@@ -84,9 +84,9 @@ def _get_gcs_data(spark, reporting_file, sql):
 
 # Writing the data into reporting parquet locations
 def _write_into_gcs_data(df, work_location):
-    logging.info("Connecting to raptor-work...!")
-    df.write.mode("overwrite").parquet(f"gs://raptor-work/{today}/{work_location}")
-    logging.info(f"successfully written into raptor-work")
+    logging.info("Connecting to raptor-workflow...!")
+    df.write.mode("overwrite").parquet(f"gs://raptor-workflow/{today}/{work_location}")
+    logging.info(f"successfully written into raptor-workflow")
 
 # Create a function named raptor_data_fetch to return the data frame based on the type of source
 def _raptor_data_fetch(spark, username, password, source,source_db, sql):
