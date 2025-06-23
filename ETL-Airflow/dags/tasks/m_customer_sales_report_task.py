@@ -130,9 +130,9 @@ def customer_sales_report_ingestion():
     logging.info(f"Data Frame : 'AGG_TRANS_Customer' is built...")
     
     # Calculate the limits of the tier level
-    max_value = AGG_TRANS_Customer.select(round(max("sum_sales_amount"), 2).alias("max_sales_amount")).collect()[0][0]
-    gold_tier = max_value * 80/100
-    silver_tier = max_value * 50 / 100
+    quantiles = AGG_TRANS_Customer.approxQuantile("sum_sales_amount", [0.5, 0.8], 0.01)
+    silver_tier = quantiles[0] 
+    gold_tier = quantiles[1]
 
     # Process the Node : EXP_Customer_Sales_Report - Add the Loyalty_Tier column
     EXP_Customer_Sales_Report = AGG_TRANS_Customer \
