@@ -315,7 +315,35 @@ class Raptor:
 
     # Provide the method to submit the raptor request
     def submit_raptor_request(self,source_type,source_sql,target_type,target_sql,primary_key,source_db=None,target_db=None,email=None,output_table_name="test"):
+        """
+        Submits a Raptor data validation request between source and target datasets, compares records at row and 
+        column level, stores results, and optionally sends an email report.
 
+        Parameters:
+            source_type (String): The data source type for the source dataset (e.g., 'hive', 'bigquery').
+            source_sql (String): SQL query to extract data from the source.
+            target_type (String): The data source type for the target dataset.
+            target_sql (String): SQL query to extract data from the target.
+            primary_key (String): Comma-separated column names used as the unique key for joining.
+            source_db (String, optional): Database name for the source, if applicable.
+            target_db (String, optional): Database name for the target, if applicable.
+            email (String, optional): Recipient email address for report delivery.
+            output_table_name (String, optional): Base name for the output tables and artifacts (default is "test").
+
+        Returns:
+            String : Confirmation message indicating that the email report has been shared.
+
+        Workflow:
+            - Fetches source and target datasets using credentials and SQL queries.
+            - Normalizes data by casting to strings and filling nulls.
+            - Joins datasets on primary key and detects mismatches.
+            - Outputs:
+                - Column-level mismatches
+                - Extra rows in source/target
+                - Summary metrics
+            - Saves results to GCS and writes to tables.
+            - Sends a structured email with data quality insights and sample mismatches.
+        """
         MST = pytz.timezone('US/Arizona')
         runDate = format(datetime.now(timezone.utc).astimezone(MST).strftime("%m%d%Y_%H%M%S"))
         

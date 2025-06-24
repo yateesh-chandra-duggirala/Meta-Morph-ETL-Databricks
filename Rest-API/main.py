@@ -22,6 +22,16 @@ fake = Faker("en_IN")
 
 # This pulls the data from the Postgres Database
 def get_data(relation, cnt):
+    """
+    Fetches data from a specific relation (table) in the Postgres database.
+
+    Parameters:
+        relation (String): Table name to query from.
+        cnt (int): Number of records to retrieve.
+
+    Returns:
+        list: Resulting records from the query.
+    """
     import psycopg2
 
     # Establish a connection with the postgres
@@ -51,6 +61,13 @@ def get_data(relation, cnt):
 
 # Saves the data in the GCS Bucket
 async def gs_bucket_auth_save(sample, type_of_data):
+    """
+    Saves a dataset as a CSV into a Google Cloud Storage bucket.
+
+    Parameters:
+        sample (list/dict): Data to be saved.
+        type_of_data (String): Identifier for naming the file in GCS.
+    """
     csv_buffer = io.BytesIO()
     print(f"Writing the {type_of_data} file into Bucket")
     pd.DataFrame(sample).to_csv(csv_buffer, index=False)
@@ -69,7 +86,10 @@ async def gs_bucket_auth_save(sample, type_of_data):
 
 # This is the function to generate the data
 async def generate_data():
-
+    """
+    Generates synthetic data for suppliers, products, customers, and sales.
+    Saves each dataset into Google Cloud Storage for the current day.
+    """
     NUM_SUPPLIERS_SAMPLE = 252
     NUM_PRODUCTS_SAMPLE = random.randint(400,483)
     NUM_CUSTOMERS_SAMPLE = random.randint(7005,10032)
@@ -186,7 +206,15 @@ async def generate_data():
 
 # Checks if the files are available for that day
 def files_check():
+    """
+    Checks if today's files already exist in the GCS bucket.
 
+    Returns:
+        bool: True if files exist for today's date.
+
+    Raises:
+        BaseException: If no matching files are found in the bucket.
+    """
     # Authenticate using the service account
     client = storage.Client.from_service_account_json(SERVICE_KEY)
 
@@ -206,6 +234,10 @@ def files_check():
 
 @app.on_event("startup")
 async def startup_event():
+    """
+    Triggered on app startup. Checks if today's files exist in GCS,
+    otherwise generates fresh data for suppliers, products, customers, and sales.
+    """
     try:
         files_check()
         print("Fetched files successfully")
@@ -216,11 +248,23 @@ async def startup_event():
 
 @app.get("/")
 async def do_wish():
+    """
+    Base endpoint to verify environment access.
+
+    Returns:
+        dict: Status and environment message.
+    """
     return {"status" : 200, "message" : f"You are accessing {env['MY_VARIABLE']} environment"}
 
 # Generate a token by calling this API
 @app.get("/v1/token")
 def generate_token():
+    """
+    API endpoint to generate an access token.
+
+    Returns:
+        dict: JWT access token.
+    """
     data = {"sub": "email"} 
     token = create_access_token(data)
     return {"access_token": token}
@@ -228,7 +272,12 @@ def generate_token():
 # suppliers API to fetch the latest supplier data from the meta-morph-flow bucket
 @app.get("/v1/suppliers")
 async def load_suppliers_data():
+    """
+    API endpoint to load latest supplier data from GCS bucket.
 
+    Returns:
+        dict: Supplier records.
+    """
     df = pd.read_csv(f"gs://meta-morph-flow/{today}/supplier_{today}.csv", 
                         storage_options={
                             "token": SERVICE_KEY
@@ -241,7 +290,12 @@ async def load_suppliers_data():
 # products API to fetch the latest product data from the meta-morph-flow bucket
 @app.get("/v1/products")
 async def load_products_data():
+    """
+    API endpoint to load latest product data from GCS bucket.
 
+    Returns:
+        dict: Product records.
+    """
     df = pd.read_csv(f"gs://meta-morph-flow/{today}/product_{today}.csv", 
                         storage_options={
                             "token": SERVICE_KEY
@@ -254,6 +308,16 @@ async def load_products_data():
 # customers API to fetch the latest customer data from the meta-morph-flow bucket
 @app.get("/v1/customers")
 async def load_customer_data(payload: dict = Depends(verify_token)):
+    """
+    API endpoint to load latest customer data from GCS bucket.
+    Requires valid token for access.
+
+    Parameters:
+        payload (dict): Decoded JWT token payload (auto-injected by FastAPI Depends).
+
+    Returns:
+        dict: Customer records.
+    """
     df = pd.read_csv(
         f"gs://meta-morph-flow/{today}/customer_{today}.csv",
         storage_options={"token": SERVICE_KEY}
