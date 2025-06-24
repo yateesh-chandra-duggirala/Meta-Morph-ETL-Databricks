@@ -4,9 +4,16 @@ import logging
 from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs
 from pyspark.sql.functions import *
 
-# Create a task that helps in ingesting the data into Suppliers
+# Create a task that helps in populating Products_Performance
 @task(task_id="m_load_products_performance")
 def product_performance_ingestion():
+    """
+    Create a function to load the Products Performance
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate exception if any Duplicates are found..
+    """
 
     # Get a spark session
     spark = get_spark_session()
@@ -60,7 +67,9 @@ def product_performance_ingestion():
 
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
-                    .groupBy(["product_id", "product_name", "category", "stock_quantity", "reorder_level", "cost_price"]) \
+                    .groupBy(
+                        ["product_id", "product_name", "category", "stock_quantity", "reorder_level", "cost_price"]
+                    ) \
                     .agg(
                         coalesce(
                             round(sum(
@@ -115,7 +124,6 @@ def product_performance_ingestion():
                                                 col("profit").alias("PROFIT"),
                                                 col("category").alias("CATEGORY")
                                             )
-
     logging.info("Data Frame : 'Shortcut_To_Products_Performance_tgt' is built")
 
     try :

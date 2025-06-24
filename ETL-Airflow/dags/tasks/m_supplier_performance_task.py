@@ -5,9 +5,16 @@ from tasks.utils import get_spark_session, write_into_table, abort_session, read
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
-# Create a task that helps in ingesting the data into Suppliers
+# Create a task that helps in Populating Suppliers Performance Table
 @task(task_id="m_load_suppliers_performance")
 def suppliers_performance_ingestion():
+    """
+    Create a function to load the Suppliers Performance
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate exception if any Duplicates are found..
+    """
 
     # Get a spark session
     spark = get_spark_session()
@@ -82,7 +89,9 @@ def suppliers_performance_ingestion():
     
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
-                    .groupBy(["supplier_id", "supplier_name", "product_name"]) \
+                    .groupBy(
+                        ["supplier_id", "supplier_name", "product_name"]
+                    ) \
                     .agg(
                         coalesce(
                             round(sum(
@@ -100,18 +109,19 @@ def suppliers_performance_ingestion():
                     )
     logging.info(f"Data Frame : 'AGG_TRANS' is built...")
 
-    # Assigns a rank to each supplier based on their total stocks sold (highest first), within each supplier group
+    # Process the Node : EXP_Suppliers_Performance - Assigns rank
     window_spec = Window.partitionBy(col("supplier_id")).orderBy(desc("agg_total_stocks_sold"))
-    Shortcut_To_Suppliers_Performance_tgt = AGG_TRANS.withColumn("rnk", row_number().over(window_spec))
-
-    # Assign a Unique Performance ID for the records
-    Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
-                                            .filter("rnk = 1") \
-                                            .drop(col("rnk")) \
-                                            .withColumn("day_dt", current_date())
+    EXP_Suppliers_Performance = AGG_TRANS \
+                                    .withColumn(
+                                        "rnk", row_number().over(window_spec)
+                                    ) \
+                                    .filter("rnk = 1") \
+                                    .drop(col("rnk")) \
+                                    .withColumn("day_dt", current_date())
+    logging.info("Data Frame : 'EXP_Suppliers_Performance' is built...")
 
     # Process the Node : Shortcut_To_Suppliers_Performance_tgt - The Target desired table
-    Shortcut_To_Suppliers_Performance_tgt = Shortcut_To_Suppliers_Performance_tgt \
+    Shortcut_To_Suppliers_Performance_tgt = EXP_Suppliers_Performance \
                                                 .select(
                                                         col("day_dt").alias("DAY_DT"),
                                                         col("supplier_id").alias("SUPPLIER_ID"),

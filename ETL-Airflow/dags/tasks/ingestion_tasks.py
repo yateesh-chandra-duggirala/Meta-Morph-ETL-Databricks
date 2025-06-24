@@ -8,7 +8,14 @@ from tasks.utils import get_spark_session, write_into_table, abort_session, APIC
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_ingest_data_into_suppliers")
 def supplier_data_ingestion():
-    
+    """
+    Create a function to ingest into Suppliers
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate Exception in case of any Duplicates
+    """
+
     # Create an object for the Suppliers API Client Class
     client = APIClient()
 
@@ -31,6 +38,7 @@ def supplier_data_ingestion():
                     .withColumnRenamed(suppliers_df.columns[3], "REGION")
     logging.info("Data Frame : Transformed 'suppliers_df' is built")
 
+    # Populating the legacy version of Suppliers Data
     suppliers_df_lgcy = suppliers_df \
                             .withColumn("DAY_DT", current_date()) \
                             .select(
@@ -71,7 +79,13 @@ def supplier_data_ingestion():
 # Create a task that helps in ingesting the data into Customers
 @task(task_id="m_ingest_data_into_customers")
 def customer_data_ingestion():
-    
+    """
+    Create a function to ingest into Customers
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate Exception in case of any Duplicates
+    """
     # Create an object for the Suppliers API Client Class
     client = APIClient()
 
@@ -95,6 +109,7 @@ def customer_data_ingestion():
                     .withColumnRenamed(customer_df.columns[4], "PHONE_NUMBER")
     logging.info("Data Frame : Transformed 'customer_df' is built")
 
+    # Populating the legacy version of Customers Data
     customer_df_lgcy = customer_df \
                             .withColumn("DAY_DT", current_date()) \
                             .select(
@@ -136,6 +151,13 @@ def customer_data_ingestion():
 # Create a task that helps in ingesting the data into Products
 @task(task_id="m_ingest_data_into_products")
 def products_data_ingestion():
+    """
+    Create a function to ingest into Products
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate Exception in case of any Duplicates
+    """
 
     # Create an object for the Suppliers API Client Class
     client = APIClient()
@@ -163,6 +185,7 @@ def products_data_ingestion():
                     .withColumnRenamed(product_df.columns[7], "SUPPLIER_ID")
     logging.info("Data Frame : Transformed 'product_df' is built")
 
+    # Populating the legacy version of Products Data
     product_df_lgcy = product_df \
                             .withColumn("DAY_DT", current_date()) \
                             .select(
@@ -207,6 +230,13 @@ def products_data_ingestion():
 # Create a task that helps the data in ingesting the data into sales
 @task(task_id="m_ingest_data_into_sales")
 def sales_data_ingestion():
+    """
+    Create a function to ingest into Sales
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate Exception in case of any Duplicates
+    """
 
     # today = datetime.now().strftime("%Y%m%d")
     today = "20250328"
@@ -220,6 +250,7 @@ def sales_data_ingestion():
     
     api = "sales"
     logging.info("Reading the CSV File into dataframe...")
+
     # Do the Transformation for the Sales Dataframe
     sales_df = sales_df \
                 .withColumnRenamed(sales_df.columns[0], "SALE_ID") \
@@ -233,6 +264,7 @@ def sales_data_ingestion():
                 .withColumnRenamed(sales_df.columns[8], "PAYMENT_MODE")
     logging.info("Data Frame : Transformed 'sales_df' is built")
 
+    # Populating the legacy version of Sales Data
     sales_df_lgcy = sales_df \
                             .withColumn("DAY_DT", current_date()) \
                             .select(

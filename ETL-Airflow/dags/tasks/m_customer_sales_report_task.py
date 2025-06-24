@@ -4,9 +4,16 @@ import logging
 from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateException, DuplicateChecker, write_to_gcs
 from pyspark.sql.functions import *
 
-# Create a task that helps in ingesting the data into Suppliers
+# Create a task that helps populating Customer Sales Report
 @task(task_id="m_load_customer_sales_report")
 def customer_sales_report_ingestion():
+    """
+    Create a function to load the Customer Sales Report
+
+    Returns: The Success message for the load
+
+    Raises: Duplicate exception if any Duplicates are found..
+    """
 
     # Get a spark session
     spark = get_spark_session()
@@ -86,8 +93,7 @@ def customer_sales_report_ingestion():
     JNR_Master = JNR_Sales_Customer \
                             .join(
                                 SQ_Shortcut_To_Products,
-                                (JNR_Sales_Customer.product_id == SQ_Shortcut_To_Products.product_id) & 
-                                (JNR_Sales_Customer.order_status != "Cancelled"),
+                                JNR_Sales_Customer.product_id == SQ_Shortcut_To_Products.product_id,
                                 "inner"
                             ) \
                             .select(
@@ -121,24 +127,24 @@ def customer_sales_report_ingestion():
                             )
     logging.info(f"Data Frame : 'EXP_Add_Sales_Data' is built...")
 
-    # Process the Node : AGG_TRANS_Customer
+    # Process the Node : AGG_TRANS_Customer - Calculate the aggregates.
     AGG_TRANS_Customer = EXP_Add_Sales_Data \
                             .groupBy("customer_id") \
                                 .agg(
-                                    sum("sale_amount").alias("sum_sales_amount")
+                                    sum("sale_amount").alias("agg_sales_amount")
                                 )
     logging.info(f"Data Frame : 'AGG_TRANS_Customer' is built...")
     
     # Calculate the limits of the tier level
-    quantiles = AGG_TRANS_Customer.approxQuantile("sum_sales_amount", [0.5, 0.8], 0.01)
+    quantiles = AGG_TRANS_Customer.approxQuantile("agg_sales_amount", [0.5, 0.8], 0.01)
     silver_tier = quantiles[0] 
     gold_tier = quantiles[1]
 
     # Process the Node : EXP_Customer_Sales_Report - Add the Loyalty_Tier column
     EXP_Customer_Sales_Report = AGG_TRANS_Customer \
                                     .withColumn("loyalty_tier", 
-                                        when(col("sum_sales_amount") > gold_tier, "GOLD")
-                                        .when(col("sum_sales_amount").between(silver_tier,gold_tier),"SILVER")
+                                        when(col("agg_sales_amount") > gold_tier, "GOLD")
+                                        .when(col("agg_sales_amount").between(silver_tier,gold_tier),"SILVER")
                                         .otherwise("BRONZE")
                                     )
     logging.info(f"Data Frame : 'EXP_Customer_Sales_Report' is built...")
@@ -194,8 +200,6 @@ def customer_sales_report_ingestion():
                                                     col("top_performer").alias("TOP_PERFORMER"),
                                                     col("load_tstmp").alias("LOAD_TSTMP")
                                                 )
-
-    # Shortcut_To_Customer_Sales_Report_Tgt.
     logging.info(f"Data Frame : 'Shortcut_To_Customer_Sales_Report_Tgt' is built...")
 
     try :
