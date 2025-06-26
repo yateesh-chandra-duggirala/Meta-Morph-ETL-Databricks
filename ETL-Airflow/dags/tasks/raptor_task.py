@@ -22,7 +22,7 @@ def trigger_raptor():
         source_sql="SELECT * FROM legacy.supplier_performance",
         target_sql="SELECT * FROM reporting.supplier_performance ",
         email='yateed1437@gmail.com',
-        output_table_name='supplier_performance_LGCY_VS_REPORT',
+        output_table_name='supplier_performance',
         primary_key='SUPPLIER_ID,DAY_DT'
     )
 
