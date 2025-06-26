@@ -19,7 +19,7 @@ def list_files_to_load():
     tables = get_list_of_tables('work')
     files_to_be_loaded = [
         file for file in file_list
-        if file.split('/')[1].split('.')[-1] not in tables
+        if file.split('/')[1].split('.')[-1].lower() not in tables
     ]
     return files_to_be_loaded
 

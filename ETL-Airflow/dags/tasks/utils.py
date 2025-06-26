@@ -252,7 +252,7 @@ def get_list_of_tables(schema: str) -> List[str]:
         tables = cursor.fetchall()
         print("Available tables list:")
         for table in tables:
-            table_list.append(table[0])
+            table_list.append(table[0].lower())
 
     except Exception as e:
         # Print the exception and allow the function to return an empty list
