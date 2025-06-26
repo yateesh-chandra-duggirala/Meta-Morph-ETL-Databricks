@@ -3,6 +3,8 @@ import logging
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from tasks.my_secrets import PASSWORD, USERNAME, SERVICE_KEY
+import psycopg2
+from typing import List
 
 # Set the Level of logging to be INFO by default
 logging.basicConfig(level=logging.INFO)
@@ -204,3 +206,64 @@ def abort_session(spark):
     """
     spark.stop()
     logging.info("Spark Session ended.!")
+
+
+def get_list_of_tables(schema: str) -> List[str]:
+    """
+    Return a list of table names that live inside a given PostgreSQL schema.
+
+    Parameters
+    ----------
+    schema : String
+        The name of the PostgreSQL schema whose tables you want to inspect.
+
+    Returns
+    -------
+    list[String]
+        A list containing the table names found in *schema*.  
+        If an error occurs, an empty list is returned and the error is printed.
+    """
+    table_list: List[str] = []
+
+    try:
+        # Establish a connection to the database
+        connection = psycopg2.connect(
+            host="host.docker.internal",
+            database="meta_morph",
+            user="postgres",
+            password=PASSWORD,
+            port="5432",
+        )
+
+        # Open a cursor to perform database operations
+        cursor = connection.cursor()
+
+        # Query information_schema for all tables in the specified schema
+        cursor.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = %s
+            """,
+            (schema,),  # parameterised to prevent SQL injection
+        )
+
+        # Fetch results and populate the return list
+        tables = cursor.fetchall()
+        print("Available tables list:")
+        for table in tables:
+            table_list.append(table[0])
+
+    except Exception as e:
+        # Print the exception and allow the function to return an empty list
+        logging.error(e)
+
+    finally:
+        # Make sure connections get closed even if an exception happens
+        try:
+            cursor.close()
+            connection.close()
+        except Exception:
+            pass
+
+    return table_list
