@@ -275,10 +275,10 @@ def _raptor_result_summary(spark, validateData,source,target,uniqueKeyColumns,ou
     logging.info(str(current_timestamp.strftime("%Y-%m-%d %H:%M:%S"))+" Number of rows in Target "+target_system+" but not in Source "+source_system+"        : "+str("{:,}".format(source_missing_rec_count)))
     data.append(("Number of rows in Target "+target_system+" but not in Source "+source_system,str("{:,}".format(source_missing_rec_count))))
             
-    data.append(("Column Level Mismatch DataSet            ",str("work.raptor_dataset_col_level_"+output_table_name)))
-    data.append(("Column Level Mismatch Percentage Summary ",str("work.raptor_dataset_col_level_smry_"+output_table_name)))
-    data.append(("Source Extra DataSet                     ",str("work.raptor_dataset_src_extra_"+output_table_name)))
-    data.append(("Target Extra DataSet                     ",str("work.raptor_dataset_tgt_extra_"+output_table_name)))
+    data.append(("Column Level Mismatch DataSet            ",str("work.col_"+output_table_name)))
+    data.append(("Column Level Mismatch Percentage Summary ",str("work.col_lvl_"+output_table_name)))
+    data.append(("Source Extra DataSet                     ",str("work.src_"+output_table_name)))
+    data.append(("Target Extra DataSet                     ",str("work.tgt_"+output_table_name)))
     
     summary_df = spark.createDataFrame(data=data, schema = columns)
     return summary_df
@@ -295,8 +295,8 @@ def _raptor_column_summary(spark, username, password, database, source,target,un
     ,count(*) as Mismatch_Record_Count_Column_Level 
     from mismatch_table_output group by 1""").withColumn("Percentage_Of_Mismatch",concat((col("Mismatch_Record_Count_Column_Level")/lit(compared_rec_count) * 100).cast("decimal(10,2)"),lit('%'))).orderBy(desc("Percentage_Of_Mismatch"))
     
-    _write_into_gcs_data(columnwise_mismatch_count, "work.raptor_dataset_col_level_smry_"+sourcetablename)
-    _write_into_table(username, password, database, "work.raptor_dataset_col_level_smry_"+sourcetablename,columnwise_mismatch_count) 
+    _write_into_gcs_data(columnwise_mismatch_count, "work.col_lvl_"+sourcetablename)
+    _write_into_table(username, password, database, "work.col_lvl_"+sourcetablename,columnwise_mismatch_count) 
 
     return columnwise_mismatch_count
 
@@ -347,7 +347,7 @@ class Raptor:
         MST = pytz.timezone('US/Arizona')
         runDate = format(datetime.now(timezone.utc).astimezone(MST).strftime("%m%d%Y_%H%M%S"))
         
-        output_table_name = source_type+ "_vs_" + target_type +  "_"+ output_table_name.strip().replace(' ','_') + "_"+ runDate
+        output_table_name = output_table_name.strip().replace(' ','_') + "_"+ runDate
         
         sourceDF = _raptor_data_fetch(self.spark, self.username, self.password, source_type,source_db,source_sql)
         targetDF = _raptor_data_fetch(self.spark, self.username, self.password, target_type,target_db,target_sql)
@@ -380,21 +380,21 @@ class Raptor:
 
         db_name = source_db if source_db else target_db
 
-        _write_into_gcs_data(col_mismatch_df, "work.raptor_dataset_col_level_"+output_table_name)
-        _write_into_table(self.username, self.password, db_name, "work.raptor_dataset_col_level_"+output_table_name, col_mismatch_df)
+        _write_into_gcs_data(col_mismatch_df, "work.col_"+output_table_name)
+        _write_into_table(self.username, self.password, db_name, "work.col_"+output_table_name, col_mismatch_df)
 
-        _write_into_gcs_data(source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"), "work.raptor_dataset_src_extra_"+output_table_name)
-        _write_into_table(self.username, self.password, db_name, "work.raptor_dataset_src_extra_"+output_table_name, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
+        _write_into_gcs_data(source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"), "work.src_"+output_table_name)
+        _write_into_table(self.username, self.password, db_name, "work.src_"+output_table_name, source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null"))
         
-        _write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.raptor_dataset_tgt_extra_"+output_table_name)
-        _write_into_table(self.username, self.password, db_name, "work.raptor_dataset_tgt_extra_"+output_table_name, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
+        _write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.tgt_"+output_table_name)
+        _write_into_table(self.username, self.password, db_name, "work.tgt_"+output_table_name, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
         
         overall_summary_df = _raptor_result_summary(self.spark, validateData,source,target,uniqueKeyColumns,output_table_name)
         
         col_summary_df = _raptor_column_summary(self.spark, self.username, self.password, db_name, source,target,uniqueKeyColumns,col_mismatch_df,output_table_name)
 
-        src_extra_df=_read_data(self.username, self.password,self.spark,db_name,"work.raptor_dataset_src_extra_"+output_table_name, False).drop("Source_Record","Target_Record").limit(5)
-        tgt_extra_df=_read_data(self.username, self.password,self.spark,db_name,"work.raptor_dataset_tgt_extra_"+output_table_name, False).drop("Source_Record","Target_Record").limit(5)
+        src_extra_df=_read_data(self.username, self.password,self.spark,db_name,"work.src_"+output_table_name, False).drop("Source_Record","Target_Record").limit(5)
+        tgt_extra_df=_read_data(self.username, self.password,self.spark,db_name,"work.tgt_"+output_table_name, False).drop("Source_Record","Target_Record").limit(5)
         
         _email_results(overall_summary_df,col_mismatch_df,col_summary_df,src_extra_df,tgt_extra_df,output_table_name,email)
         return 'Email Report shared to the recipient..'
