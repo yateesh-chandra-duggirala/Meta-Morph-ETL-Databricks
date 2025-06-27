@@ -116,6 +116,14 @@ def suppliers_performance_ingestion():
                                         "rnk", row_number().over(window_spec)
                                     ) \
                                     .filter("rnk = 1") \
+                                    .withColumn(
+                                        "product_name",
+                                        when(
+                                            col("agg_total_revenue") > 0
+                                            , col("product_name")
+                                        ) \
+                                        .otherwise(lit(None).cast("string"))
+                                    ) \
                                     .drop(col("rnk")) \
                                     .withColumn("day_dt", current_date())
     logging.info("Data Frame : 'EXP_Suppliers_Performance' is built...")
