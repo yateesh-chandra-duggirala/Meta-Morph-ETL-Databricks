@@ -229,7 +229,7 @@ current_timestamp = datetime.now()
 formatted_timestamp = current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 # Function to prepare the raptor result summary
-def _raptor_result_summary(spark, validateData,source,target,uniqueKeyColumns,output_table_name):
+def _raptor_result_summary(spark, source_type, target_type, validateData,source,target,uniqueKeyColumns,output_table_name):
 
     logging.info("Printing Summary ")
     
@@ -240,8 +240,8 @@ def _raptor_result_summary(spark, validateData,source,target,uniqueKeyColumns,ou
     target_missing_rec_count= source.join(target,uniqueKeyColumns,"left").filter("Target_Record is null").count()
     source_missing_rec_count = source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null").count()
     
-    source_system=str(output_table_name.split("_",1)[0])
-    target_system=str(output_table_name.split("_",3)[2])
+    source_system=str(source_type)
+    target_system=str(target_type)
     Dataset_Name=str(output_table_name)
     
     columns = ['Description', 'Value']
@@ -389,7 +389,7 @@ class Raptor:
         _write_into_gcs_data(source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"), "work.tgt_"+output_table_name)
         _write_into_table(self.username, self.password, db_name, "work.tgt_"+output_table_name, source.join(target,uniqueKeyColumns,"right").filter("Source_Record is null"))
         
-        overall_summary_df = _raptor_result_summary(self.spark, validateData,source,target,uniqueKeyColumns,output_table_name)
+        overall_summary_df = _raptor_result_summary(self.spark, source_type, target_type, validateData,source,target,uniqueKeyColumns,output_table_name)
         
         col_summary_df = _raptor_column_summary(self.spark, self.username, self.password, db_name, source,target,uniqueKeyColumns,col_mismatch_df,output_table_name)
 
