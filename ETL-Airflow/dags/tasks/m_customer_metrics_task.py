@@ -112,13 +112,13 @@ def customer_metrics_upsert():
                         sum("quantity").alias("agg_TOTAL_ORDERS"),
                         max("sale_date").alias("agg_LAST_PURCHASE_DATE"),
                         min("sale_date").alias("agg_FIRST_PURCHASE_DATE"),
-                        sum("shipping_cost").alias("agg_TOTAL_SHIPPING_COST"),
-                        sum(col("quantity") * col("selling_price")).alias("agg_EXPENDITURE"),
-                        sum(col("quantity") * col("selling_price") * col("discount") / lit(100)).alias("agg_TOTAL_AMOUNT_SAVINGS"),
+                        coalesce(sum("shipping_cost"), lit(0)).alias("agg_TOTAL_SHIPPING_COST"),
+                        coalesce(sum(col("quantity") * col("selling_price")), lit(0)).alias("agg_EXPENDITURE"),
+                        coalesce(sum(col("quantity") * col("selling_price") * col("discount") / lit(100)), lit(0)).alias("agg_TOTAL_AMOUNT_SAVINGS"),
                         sum(when(col("order_status") == 'Delivered', lit(1)).otherwise(lit(0))).alias("agg_DELIVERED_ORDERS_COUNT"),
                         sum(when(col("order_status") == 'Cancelled', lit(1)).otherwise(lit(0))).alias("agg_CANCELLED_ORDERS_COUNT"),
                     )\
-                    .withColumn("AVERAGE_ORDER_VALUE", col("agg_EXPENDITURE") / col("agg_TOTAL_ORDERS")) \
+                    .withColumn("AVERAGE_ORDER_VALUE", coalesce(col("agg_EXPENDITURE") / col("agg_TOTAL_ORDERS"), lit(0))) \
                     .withColumn("ACTIVE_CUSTOMER_FLAG",
                                 when(col("agg_LAST_PURCHASE_DATE") >= current_date() - 4, lit("TRUE"))
                                 .otherwise(lit("FALSE"))) \
@@ -127,11 +127,16 @@ def customer_metrics_upsert():
     logging.info("Data Frame : 'AGG_TRANS' is built...")
 
     # Assign Rank based on the Payment Mode.
-    window_spec = Window.partitionBy('customer_id').orderBy(desc('payment_mode'))
+    window_spec = Window.partitionBy('customer_id').orderBy(desc('agg_CNT'), asc('payment_mode'))
     RNK_Payment_Mode = JNR_Full \
+                            .groupBy(
+                                ["customer_id", "payment_mode"]
+                            ) \
+                            .agg(count("*").alias("agg_CNT")) \
                             .select(
                                 col("customer_id"), 
-                                col("payment_mode")
+                                col("payment_mode"),
+                                col("agg_CNT")
                             ) \
                             .withColumn("rnk", row_number().over(window_spec)) \
                             .filter(col("rnk") == 1) \
@@ -147,11 +152,11 @@ def customer_metrics_upsert():
                 .select(
                     col("agg.customer_id").alias("CUSTOMER_ID"),
                     col("agg.name").alias("CUSTOMER_NAME"),
-                    col("agg.agg_TOTAL_ORDERS").alias("TOTAL_ORDERS"),
-                    col("agg.agg_TOTAL_AMOUNT_SAVINGS").alias("TOTAL_AMOUNT_SAVINGS"),
-                    col("agg.agg_TOTAL_SHIPPING_COST").alias("TOTAL_SHIPPING_COST"),
-                    col("agg.agg_EXPENDITURE").alias("EXPENDITURE"),
-                    col("agg.AVERAGE_ORDER_VALUE"),
+                    coalesce(col("agg.agg_TOTAL_ORDERS"), lit(0)).alias("TOTAL_ORDERS"),
+                    round(col("agg.agg_TOTAL_AMOUNT_SAVINGS"), 2).alias("TOTAL_AMOUNT_SAVINGS"),
+                    round(col("agg.agg_TOTAL_SHIPPING_COST"), 2).alias("TOTAL_SHIPPING_COST"),
+                    round(col("agg.agg_EXPENDITURE"), 2).alias("EXPENDITURE"),
+                    round(col("agg.AVERAGE_ORDER_VALUE"), 2).alias("AVERAGE_ORDER_VALUE"),
                     col("agg.agg_FIRST_PURCHASE_DATE").alias("FIRST_PURCHASE_DATE"),
                     col("agg.agg_LAST_PURCHASE_DATE").alias("LAST_PURCHASE_DATE"),
                     col("rnk.payment_mode").alias("MOST_USED_PAYMENT_MODE"),
