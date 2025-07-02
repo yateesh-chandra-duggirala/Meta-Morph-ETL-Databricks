@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs
+from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs, execute_merge
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
@@ -106,37 +106,76 @@ def customer_metrics_upsert():
     # Process the Node : AGG_TRANS - calcluating the Aggregates required.
     AGG_TRANS = JNR_Full \
                     .groupBy(
-                        "customer_id", "name", "city", "email", "phone_number", "payment_mode"
+                        "customer_id", "name", "city", "email", "phone_number"
                     ) \
                     .agg(
-                        sum("quantity").alias("TOTAL_ORDERS"),
-                        max("sale_date").alias("LAST_PURCHASE_DATE"),
-                        min("sale_date").alias("FIRST_PURCHASE_DATE"),
-                        sum("shipping_cost").alias("TOTAL_SHIPPING_COST"),
-                        sum(col("quantity") * col("selling_price")).alias("EXPENDITURE"),
-                        sum(col("quantity") * col("selling_price") * col("discount") / lit(100)).alias("TOTAL_AMOUNT_SAVINGS"),
-                        sum(when(col("order_status") == 'Delivered', lit(1)).otherwise(lit(0))).alias("DELIVERED_ORDERS_COUNT"),
-                        sum(when(col("order_status") == 'Cancelled', lit(1)).otherwise(lit(0))).alias("CANCELLED_ORDERS_COUNT"),
+                        sum("quantity").alias("agg_TOTAL_ORDERS"),
+                        max("sale_date").alias("agg_LAST_PURCHASE_DATE"),
+                        min("sale_date").alias("agg_FIRST_PURCHASE_DATE"),
+                        coalesce(sum("shipping_cost"), lit(0)).alias("agg_TOTAL_SHIPPING_COST"),
+                        coalesce(sum(col("quantity") * col("selling_price")), lit(0)).alias("agg_EXPENDITURE"),
+                        coalesce(sum(col("quantity") * col("selling_price") * col("discount") / lit(100)), lit(0)).alias("agg_TOTAL_AMOUNT_SAVINGS"),
+                        sum(when(col("order_status") == 'Delivered', lit(1)).otherwise(lit(0))).alias("agg_DELIVERED_ORDERS_COUNT"),
+                        sum(when(col("order_status") == 'Cancelled', lit(1)).otherwise(lit(0))).alias("agg_CANCELLED_ORDERS_COUNT"),
                     )\
-                    .withColumn("AVERAGE_ORDER_VALUE", col("EXPENDITURE") / col("TOTAL_ORDERS")) \
+                    .withColumn("AVERAGE_ORDER_VALUE", coalesce(col("agg_EXPENDITURE") / col("agg_TOTAL_ORDERS"), lit(0))) \
                     .withColumn("ACTIVE_CUSTOMER_FLAG",
-                                when(col("LAST_PURCHASE_DATE") >= current_date() - 4, lit("TRUE"))
+                                when(col("agg_LAST_PURCHASE_DATE") >= current_date() - 4, lit("TRUE"))
                                 .otherwise(lit("FALSE"))) \
                     .withColumn("LOAD_TIMESTAMP", current_timestamp()) \
                     .withColumn("UPDATE_TIMESTAMP", current_timestamp())
     logging.info("Data Frame : 'AGG_TRANS' is built...")
 
     # Assign Rank based on the Payment Mode.
-    window_spec = Window.partitionBy('customer_id').orderBy(desc('payment_mode'))
-    RNK_Payment_Mode = AGG_TRANS.withColumn("rnk", row_number().over(window_spec)) \
+    window_spec = Window.partitionBy('customer_id').orderBy(desc('agg_CNT'), asc('payment_mode'))
+    RNK_Payment_Mode = JNR_Full \
+                            .groupBy(
+                                ["customer_id", "payment_mode"]
+                            ) \
+                            .agg(count("*").alias("agg_CNT")) \
+                            .select(
+                                col("customer_id"), 
+                                col("payment_mode"),
+                                col("agg_CNT")
+                            ) \
+                            .withColumn("rnk", row_number().over(window_spec)) \
                             .filter(col("rnk") == 1) \
                             .drop(col("rnk"))
+    
+    # Process the Node : JNR_All - Joining AGG_TRANS and Ranked Dataframe
+    JNR_ALL = AGG_TRANS.alias("agg") \
+                .join(
+                    RNK_Payment_Mode.alias("rnk"),
+                    col("agg.customer_id") == col("rnk.customer_id"),
+                    "left"
+                ) \
+                .select(
+                    col("agg.customer_id").alias("CUSTOMER_ID"),
+                    col("agg.name").alias("CUSTOMER_NAME"),
+                    coalesce(col("agg.agg_TOTAL_ORDERS"), lit(0)).alias("TOTAL_ORDERS"),
+                    round(col("agg.agg_TOTAL_AMOUNT_SAVINGS"), 2).alias("TOTAL_AMOUNT_SAVINGS"),
+                    round(col("agg.agg_TOTAL_SHIPPING_COST"), 2).alias("TOTAL_SHIPPING_COST"),
+                    round(col("agg.agg_EXPENDITURE"), 2).alias("EXPENDITURE"),
+                    round(col("agg.AVERAGE_ORDER_VALUE"), 2).alias("AVERAGE_ORDER_VALUE"),
+                    col("agg.agg_FIRST_PURCHASE_DATE").alias("FIRST_PURCHASE_DATE"),
+                    col("agg.agg_LAST_PURCHASE_DATE").alias("LAST_PURCHASE_DATE"),
+                    col("rnk.payment_mode").alias("MOST_USED_PAYMENT_MODE"),
+                    col("agg.agg_DELIVERED_ORDERS_COUNT").alias("DELIVERED_ORDERS_COUNT"),
+                    col("agg.agg_CANCELLED_ORDERS_COUNT").alias("CANCELLED_ORDERS_COUNT"),
+                    col("agg.ACTIVE_CUSTOMER_FLAG"),
+                    col("agg.city").alias("CITY"),
+                    col("agg.email").alias("EMAIL"),
+                    col("agg.phone_number").alias("PHONE_NUMBER"),
+                    col("agg.LOAD_TIMESTAMP"),
+                    col("agg.UPDATE_TIMESTAMP")
+                )
+    logging.info("Data-frame 'JNR_ALL' built successfully.")
 
     # Process the Node : Shortcut_To_Customer_Metrics - Target Dataframe.
-    Shortcut_To_Customer_Metrics = RNK_Payment_Mode \
+    Shortcut_To_Customer_Metrics = JNR_ALL \
                                     .select(
-                                        col("customer_id").alias("CUSTOMER_ID"),
-                                        col("name").alias("CUSTOMER_NAME"),
+                                        col("CUSTOMER_ID"),
+                                        col("CUSTOMER_NAME"),
                                         col("TOTAL_ORDERS"),
                                         col("TOTAL_AMOUNT_SAVINGS"),
                                         col("TOTAL_SHIPPING_COST"),
@@ -144,13 +183,13 @@ def customer_metrics_upsert():
                                         col("AVERAGE_ORDER_VALUE"),
                                         col("FIRST_PURCHASE_DATE"),
                                         col("LAST_PURCHASE_DATE"),
-                                        col("payment_mode").alias("MOST_USED_PAYMENT_MODE"),
+                                        col("MOST_USED_PAYMENT_MODE"),
                                         col("DELIVERED_ORDERS_COUNT"),
                                         col("CANCELLED_ORDERS_COUNT"),
                                         col("ACTIVE_CUSTOMER_FLAG"),
-                                        col("city").alias("CITY"),
-                                        col("email").alias("EMAIL"),
-                                        col("phone_number").alias("PHONE_NUMBER"),
+                                        col("CITY"),
+                                        col("EMAIL"),
+                                        col("PHONE_NUMBER"),
                                         col("LOAD_TIMESTAMP"),
                                         col("UPDATE_TIMESTAMP")
                                     )
@@ -167,6 +206,7 @@ def customer_metrics_upsert():
 
         # Load the data into the table
         write_into_table("customer_metrics_stg", Shortcut_To_Customer_Metrics, "staging", "overwrite")
+        execute_merge("staging.customer_metrics_stg")
 
     except DuplicateException as e:
 
