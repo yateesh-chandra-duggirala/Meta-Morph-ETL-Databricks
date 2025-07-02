@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs
+from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs, execute_merge
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
@@ -206,6 +206,7 @@ def customer_metrics_upsert():
 
         # Load the data into the table
         write_into_table("customer_metrics_stg", Shortcut_To_Customer_Metrics, "staging", "overwrite")
+        execute_merge("staging.customer_metrics_stg")
 
     except DuplicateException as e:
 

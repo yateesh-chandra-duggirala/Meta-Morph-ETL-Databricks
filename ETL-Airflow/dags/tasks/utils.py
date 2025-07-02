@@ -208,6 +208,7 @@ def abort_session(spark):
     logging.info("Spark Session ended.!")
 
 
+# Define function to fetch the list of tables from schema
 def get_list_of_tables(schema: str) -> List[str]:
     """
     Return a list of table names that live inside a given PostgreSQL schema.
@@ -257,13 +258,130 @@ def get_list_of_tables(schema: str) -> List[str]:
     except Exception as e:
         # Print the exception and allow the function to return an empty list
         logging.error(e)
+        raise e
 
     finally:
         # Make sure connections get closed even if an exception happens
         try:
             cursor.close()
             connection.close()
-        except Exception:
-            pass
+        except Exception as e:
+            raise e
 
     return table_list
+
+
+# Executing Merge Statement on the PG Admin
+def execute_merge(source_table: str):
+    """
+    Executes the Merge statement in the PG Admin
+
+    Parameters
+    ----------
+    source_table : String
+        The name of the PostgreSQL table which has to be upserted.
+
+    Returns
+    -------
+    SUCCESSFUL EXECUTION.
+    """
+
+    try:
+        # Establish a connection to the database
+        connection = psycopg2.connect(
+            host="host.docker.internal",
+            database="meta_morph",
+            user="postgres",
+            password=PASSWORD,
+            port="5432",
+        )
+
+        # Open a cursor to perform database operations
+        cursor = connection.cursor()
+        logging.info("Created cursor out of the PG Connection..!")
+
+        # Query information_schema for all tables in the specified schema
+        cursor.execute(
+            f"""
+            MERGE INTO legacy.CUSTOMER_METRICS as tgt
+            USING {source_table} as src
+            ON tgt."CUSTOMER_ID" = src."CUSTOMER_ID"
+            WHEN MATCHED THEN
+            UPDATE SET
+                "CUSTOMER_NAME" = src."CUSTOMER_NAME",
+                "TOTAL_ORDERS" = src."TOTAL_ORDERS",
+                "TOTAL_AMOUNT_SAVINGS" = src."TOTAL_AMOUNT_SAVINGS",
+                "TOTAL_SHIPPING_COST" = src."TOTAL_SHIPPING_COST",
+                "EXPENDITURE" = src."EXPENDITURE",
+                "AVERAGE_ORDER_VALUE" = src."AVERAGE_ORDER_VALUE",
+                "FIRST_PURCHASE_DATE" = src."FIRST_PURCHASE_DATE",
+                "LAST_PURCHASE_DATE" = src."LAST_PURCHASE_DATE",
+                "MOST_USED_PAYMENT_MODE" = src."MOST_USED_PAYMENT_MODE",
+                "DELIVERED_ORDERS_COUNT" = src."DELIVERED_ORDERS_COUNT",
+                "CANCELLED_ORDERS_COUNT" = src."CANCELLED_ORDERS_COUNT",
+                "ACTIVE_CUSTOMER_FLAG" = src."ACTIVE_CUSTOMER_FLAG",
+                "CITY" = src."CITY",
+                "EMAIL" = src."EMAIL",
+                "PHONE_NUMBER" = src."PHONE_NUMBER",
+                "UPDATE_TIMESTAMP" = src."UPDATE_TIMESTAMP"
+            WHEN NOT MATCHED THEN
+                INSERT (
+                    "CUSTOMER_ID",
+                    "CUSTOMER_NAME",
+                    "TOTAL_ORDERS",
+                    "TOTAL_AMOUNT_SAVINGS",
+                    "TOTAL_SHIPPING_COST",
+                    "EXPENDITURE",
+                    "AVERAGE_ORDER_VALUE",
+                    "FIRST_PURCHASE_DATE",
+                    "LAST_PURCHASE_DATE",
+                    "MOST_USED_PAYMENT_MODE",
+                    "DELIVERED_ORDERS_COUNT",
+                    "CANCELLED_ORDERS_COUNT",
+                    "ACTIVE_CUSTOMER_FLAG",
+                    "CITY",
+                    "EMAIL",
+                    "PHONE_NUMBER",
+                    "LOAD_TIMESTAMP",
+                    "UPDATE_TIMESTAMP"
+                )
+                VALUES (
+                    src."CUSTOMER_ID",
+                    src."CUSTOMER_NAME",
+                    src."TOTAL_ORDERS",
+                    src."TOTAL_AMOUNT_SAVINGS",
+                    src."TOTAL_SHIPPING_COST",
+                    src."EXPENDITURE",
+                    src."AVERAGE_ORDER_VALUE",
+                    src."FIRST_PURCHASE_DATE",
+                    src."LAST_PURCHASE_DATE",
+                    src."MOST_USED_PAYMENT_MODE",
+                    src."DELIVERED_ORDERS_COUNT",
+                    src."CANCELLED_ORDERS_COUNT",
+                    src."ACTIVE_CUSTOMER_FLAG",
+                    src."CITY",
+                    src."EMAIL",
+                    src."PHONE_NUMBER",
+                    src."LOAD_TIMESTAMP",
+                    src."UPDATE_TIMESTAMP"
+                )
+            """
+        )
+        logging.info("Merge executed Successfully..! Committing Transaction.")
+        connection.commit()
+
+    except Exception as e:
+        # Print the exception and allow the function to return an empty list
+        logging.error(e)
+        raise e
+
+    finally:
+        # Make sure connections get closed even if an exception happens
+        try:
+            cursor.close()
+            connection.close()
+            logging.info("Committed and Corresponding Connections closed..!")
+        except Exception as e:
+            raise e
+
+    return "Merge Done..!"
