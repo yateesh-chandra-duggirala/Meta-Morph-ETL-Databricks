@@ -10,8 +10,7 @@ from fastapi import FastAPI, Depends
 from auth_utils import *
 from my_secrets import *
 
-# today = datetime.now().strftime("%Y%m%d")
-today = "20250328"
+today = datetime.now().strftime("%Y%m%d")
 print(today)
 
 # Create an object app for the FastAPI class

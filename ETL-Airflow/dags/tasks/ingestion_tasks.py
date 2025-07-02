@@ -3,6 +3,7 @@ from airflow.decorators import task
 from pyspark.sql import Row
 from pyspark.sql.functions import current_date, col
 import logging
+from datetime import datetime
 from tasks.utils import get_spark_session, write_into_table, abort_session, APIClient, DuplicateChecker, DuplicateException, write_to_gcs
 
 # Create a task that helps in ingesting the data into Suppliers
@@ -238,8 +239,7 @@ def sales_data_ingestion():
     Raises: Duplicate Exception in case of any Duplicates
     """
 
-    # today = datetime.now().strftime("%Y%m%d")
-    today = "20250328"
+    today = datetime.now().strftime("%Y%m%d")
 
     # Create a spark session with the hadoop configurations and also authentic credentials
     spark = get_spark_session()
