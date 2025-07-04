@@ -90,7 +90,7 @@ def suppliers_performance_ingestion():
     # Process the Node : AGG_TRANS - Calculate the aggregates that are needed for the target columns
     AGG_TRANS = JNR_Master \
                     .groupBy(
-                        ["supplier_id", "supplier_name", "product_name"]
+                        ["supplier_id"]
                     ) \
                     .agg(
                         coalesce(
@@ -109,9 +109,26 @@ def suppliers_performance_ingestion():
                     )
     logging.info(f"Data Frame : 'AGG_TRANS' is built...")
 
+    # Process the Node : JNR_ALL - Join to get all suppliers
+    JNR_ALL = JNR_Master.alias('mstr') \
+                .join(
+                    AGG_TRANS.alias('exps'),
+                    trim(col("mstr.supplier_id")) == trim(col("exps.supplier_id")),
+                    "left"
+                ) \
+                .select(
+                    col("mstr.supplier_id").alias("supplier_id"),
+                    col("mstr.supplier_name").alias("supplier_name"),
+                    col("exps.agg_total_revenue").alias("agg_total_revenue"),
+                    col("exps.agg_total_products_sold").alias("agg_total_products_sold"),
+                    col("exps.agg_total_stocks_sold").alias("agg_total_stocks_sold"),
+                    col("mstr.product_name").alias("product_name")
+                )
+    logging.info("Data Frame : 'JNR_ALL' is built...")
+
     # Process the Node : EXP_Suppliers_Performance - Assigns rank
-    window_spec = Window.partitionBy(col("supplier_id")).orderBy(desc("agg_total_stocks_sold"))
-    EXP_Suppliers_Performance = AGG_TRANS \
+    window_spec = Window.partitionBy(col("supplier_id")).orderBy(desc("agg_total_revenue"),desc("agg_total_stocks_sold"))
+    EXP_Suppliers_Performance = JNR_ALL \
                                     .withColumn(
                                         "rnk", row_number().over(window_spec)
                                     ) \
