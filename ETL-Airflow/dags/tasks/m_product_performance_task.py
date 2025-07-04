@@ -77,8 +77,19 @@ def product_performance_ingestion():
                             ),2), lit(0.0)
                         ).alias("agg_total_sales_amount"),
 
-                        coalesce(
-                            round(avg(col("selling_price")), 2), lit(0.0)
+                        when(
+                            sum(col("quantity")) > lit(0),
+                            round(
+                                coalesce(
+                                    sum(
+                                        (col("selling_price") - (col("selling_price") * col("discount") / lit(100.0))) * col("quantity")
+                                    ) / sum(col("quantity")), 
+                                    lit(0.0)
+                                ), 2
+                            )
+                        ) \
+                        .otherwise(
+                            lit(0.0)
                         ).alias("agg_average_sale_price"),
 
                         coalesce(sum(col("quantity")), lit(0)).alias("agg_total_quantity_sold")
