@@ -61,7 +61,7 @@ def customer_sales_report_ingestion():
                                                 col("top_selling_product")
                                             ) \
                                             .filter(
-                                                        (col("day_dt") == (current_date() - 1)) & 
+                                                        (col("day_dt") == current_date()) & 
                                                         (col("top_selling_product").isNotNull()) 
                                             ).distinct()
     data_list = SQ_Shortcut_To_Supplier_Performance.collect()
@@ -116,6 +116,7 @@ def customer_sales_report_ingestion():
     # Process the Node : EXP_Add_Sales_Data - Adding new columns that comprise the Sales Info
     EXP_Add_Sales_Data = JNR_Master \
                             .withColumn("day_dt", current_date()) \
+                            .withColumn("price", col("selling_price") - col("selling_price") * col("discount") / 100) \
                             .withColumn("sale_amount", col("quantity")*col("selling_price")*(1-(col("discount")/100))) \
                             .withColumn("sale_date", coalesce(col("sale_date"), current_date() - 1)) \
                             .withColumn("sale_year",year(col("sale_date"))) \
@@ -169,7 +170,7 @@ def customer_sales_report_ingestion():
                                         col("a.product_id"),
                                         col("a.product_name"),
                                         col("a.category"),
-                                        col("a.selling_price"),
+                                        col("a.price"),
                                         col("a.day_dt"),
                                         col("a.sale_amount"),
                                         col("a.sale_year"),
@@ -194,7 +195,7 @@ def customer_sales_report_ingestion():
                                                     col("sale_month").alias("SALE_MONTH"),
                                                     col("sale_year").alias("SALE_YEAR"),
                                                     col("quantity").alias("QUANTITY"),
-                                                    col("selling_price").alias("SELLING_PRICE"),
+                                                    col("price").alias("PRICE"),
                                                     col("sale_amount").alias("SALE_AMOUNT"),
                                                     col("loyalty_tier").alias("LOYALTY_TIER"),
                                                     col("top_performer").alias("TOP_PERFORMER"),
