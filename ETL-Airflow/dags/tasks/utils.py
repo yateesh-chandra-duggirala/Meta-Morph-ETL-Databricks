@@ -115,6 +115,7 @@ def get_spark_session() :
     spark = SparkSession.builder.appName("GCS_to_Postgres") \
     .config("spark.jars", "/usr/local/airflow/jars/postgresql-42.7.1.jar,/usr/local/airflow/jars/gcs-connector-hadoop3-latest.jar") \
     .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
+    .config("spark.sql.session.timeZone", "Asia/Kolkata") \
     .config("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
     .getOrCreate()
     spark._jsc.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", f"/usr/local/airflow/jars/{SERVICE_KEY}")
