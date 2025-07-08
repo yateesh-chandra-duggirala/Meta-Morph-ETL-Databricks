@@ -3,7 +3,7 @@ from airflow.models.xcom_arg import XComArg
 from airflow.utils.task_group import TaskGroup
 from .my_secrets import SERVICE_KEY
 from tasks.utils import get_list_of_tables, get_spark_session, write_into_table
-from google.cloud import  storage
+from google.cloud import storage
 import logging
 
 
@@ -11,7 +11,8 @@ def list_files_to_load():
     """
     Function to check the files that are required to be ingested.
     """
-    client = storage.Client.from_service_account_json(f"/usr/local/airflow/jars/{SERVICE_KEY}")
+    client = storage.Client.from_service_account_json(
+        f"/usr/local/airflow/jars/{SERVICE_KEY}")
     bucket = client.get_bucket("raptor-workflow")
     blobs = bucket.list_blobs()
     file_list = [blob.name for blob in blobs if blob.name.endswith('/')]

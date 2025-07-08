@@ -1,6 +1,5 @@
 # Import Libraries
 from airflow.decorators import dag
-from airflow.models.baseoperator import chain
 from datetime import datetime
 from tasks.ingestion_tasks import (
     supplier_data_ingestion,
@@ -12,6 +11,7 @@ from tasks.m_supplier_performance_task import suppliers_performance_ingestion
 from tasks.m_product_performance_task import product_performance_ingestion
 from tasks.m_customer_sales_report_task import customer_sales_report_ingestion
 from tasks.m_customer_metrics_task import customer_metrics_upsert
+
 
 # Create a Dag
 @dag(
@@ -27,7 +27,7 @@ def ingestion():
 
     # Make a function call for the Customer task
     customers = customer_data_ingestion()
-    
+
     # Make a function call for the Products task
     products = products_data_ingestion()
 

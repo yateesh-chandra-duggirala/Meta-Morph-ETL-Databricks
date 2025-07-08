@@ -15,9 +15,9 @@ depending on how many Astronauts are in space, and the DAG will adjust
 accordingly each time it runs.
 
 For more explanation and getting started instructions, see our Write your
-first DAG tutorial: https://www.astronomer.io/docs/learn/get-started-with-airflow
+first DAG tutorial:
+https://www.astronomer.io/docs/learn/get-started-with-airflow
 
-![Picture of the ISS](https://www.esa.int/var/esa/storage/images/esa_multimedia/images/2010/02/space_station_over_earth/10293696-3-eng-GB/Space_Station_over_Earth_card_full.jpg)
 """
 
 from airflow import Dataset
@@ -38,7 +38,8 @@ import requests
 def example_astronauts():
     # Define tasks
     @task(
-        # Define a dataset outlet for the task. This can be used to schedule downstream DAGs when this task has run.
+        # Define a dataset outlet for the task.
+        # This can be used to schedule downstream DAGs when this task has run.
         outlets=[Dataset("current_astronauts")]
     )  # Define that this task updates the `current_astronauts` Dataset
     def get_astronauts(**context) -> list[dict]:
@@ -53,8 +54,8 @@ def example_astronauts():
             r.raise_for_status()
             number_of_people_in_space = r.json()["number"]
             list_of_people_in_space = r.json()["people"]
-        except:
-            print("API currently not available, using hardcoded data instead.")
+        except Exception:
+            print("API currently not available, using dev data instead.")
             number_of_people_in_space = 12
             list_of_people_in_space = [
                 {"craft": "ISS", "name": "Oleg Kononenko"},
@@ -87,12 +88,13 @@ def example_astronauts():
         craft = person_in_space["craft"]
         name = person_in_space["name"]
 
-        print(f"{name} is currently in space flying on the {craft}! {greeting}")
+        print(f"{name} is currently flying on the {craft}! {greeting}")
 
     # Use dynamic task mapping to run the print_astronaut_craft task for each
     # Astronaut in space
     print_astronaut_craft.partial(greeting="Hello! :)").expand(
-        person_in_space=get_astronauts()  # Define dependencies using TaskFlow API syntax
+        person_in_space=get_astronauts()
+        # Define dependencies using TaskFlow API syntax
     )
 
 
