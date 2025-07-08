@@ -5,13 +5,16 @@ from typing import Annotated
 from my_secrets import *
 
 
-def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
+def create_access_token(data: dict,
+                        expires_delta: timedelta = timedelta(
+                            minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
     """
     Generates a JWT access token with an expiration time.
 
     Parameters:
         data (dict): The payload to include in the token (e.g., user ID, role).
-        expires_delta (timedelta, optional): Time until the token expires. Defaults to configured value.
+        expires_delta (timedelta, optional):
+            Time until the token expires. Defaults to configured value.
 
     Returns:
         str: The encoded JWT token as a string.
@@ -27,16 +30,19 @@ def verify_token(authorization: Annotated[str | None, Header()] = None):
     Verifies the validity of a JWT token passed in the Authorization header.
 
     Parameters:
-        authorization (str | None): Authorization header in the format "Bearer <token>".
+        authorization (str | None):
+            Authorization header in the format "Bearer <token>".
 
     Returns:
         dict: The decoded token payload if verification succeeds.
 
     Raises:
-        HTTPException: If the token is missing, improperly formatted, or invalid.
+        HTTPException: If the token is missing or invalid.
     """
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing token")
 
     token = authorization.split(" ")[1]
 
@@ -44,4 +50,5 @@ def verify_token(authorization: Annotated[str | None, Header()] = None):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid token")
