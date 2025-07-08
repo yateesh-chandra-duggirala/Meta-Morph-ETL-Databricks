@@ -1,7 +1,7 @@
 # Import Libraries
 from airflow.decorators import task
 import logging
-from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker, DuplicateException, write_to_gcs
+from tasks.utils import get_spark_session, write_into_table, abort_session, read_data, DuplicateChecker
 from pyspark.sql.functions import *
 
 # Create a task that helps in populating Products_Performance
@@ -137,25 +137,22 @@ def product_performance_ingestion():
                                             )
     logging.info("Data Frame : 'Shortcut_To_Products_Performance_tgt' is built")
 
-    try :
+    try:
 
         # Implement the Duplicate checker
         chk = DuplicateChecker()
         chk.has_duplicates(Shortcut_To_Products_Performance_tgt, ['DAY_DT','PRODUCT_ID'])
-        
-        # Load the Data into Parquet File
-        write_to_gcs(Shortcut_To_Products_Performance_tgt, "product_performance")
 
         # Load the data into the table
         write_into_table("product_performance", Shortcut_To_Products_Performance_tgt, "legacy", "append")        
 
-    except DuplicateException as e:
+    except Exception as e:
 
         # Raise an exception if Duplicates are found
         logging.error(str(e))
         raise
-    
-    finally :
+
+    finally:
 
         # Abort the session when Done.
         abort_session(spark)
