@@ -19,6 +19,7 @@ app = FastAPI()
 # Create an object app for the Faker class to get Indian encoded Data
 fake = Faker("en_IN")
 
+
 # This pulls the data from the Postgres Database
 def get_data(relation, cnt):
     """
@@ -35,11 +36,11 @@ def get_data(relation, cnt):
 
     # Establish a connection with the postgres
     conn = psycopg2.connect(
-        database = 'meta_morph',
-        user = USERNAME,
-        password = PASSWORD,
-        host = 'localhost',
-        port = '5432'
+        database='meta_morph',
+        user=USERNAME,
+        password=PASSWORD,
+        host='localhost',
+        port='5432'
     )
 
     # Create a cursor Object
@@ -57,6 +58,7 @@ def get_data(relation, cnt):
     result = cursor.fetchall()
     conn.close()
     return result
+
 
 # Saves the data in the GCS Bucket
 async def gs_bucket_auth_save(sample, type_of_data):
@@ -78,9 +80,13 @@ async def gs_bucket_auth_save(sample, type_of_data):
     destination_blob_name = f"{today}/{type_of_data}_{today}.csv"
     blob = bucket.blob(destination_blob_name)
 
-    blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv", timeout=300)
+    blob.upload_from_string(
+                            csv_buffer.getvalue(),
+                            content_type="text/csv",
+                            timeout=300
+                            )
 
-    print(f"*-*-*-*- File uploaded to {bucket_name}/{destination_blob_name} -*-*-*-*-*\n\n")
+    print(f"*-*-* File uploaded to {bucket_name} *-*-*\n\n")
 
 
 # This is the function to generate the data
@@ -90,13 +96,13 @@ async def generate_data():
     Saves each dataset into Google Cloud Storage for the current day.
     """
     NUM_SUPPLIERS_SAMPLE = 252
-    NUM_PRODUCTS_SAMPLE = random.randint(400,483)
-    NUM_CUSTOMERS_SAMPLE = random.randint(7005,10032)
-    NUM_SALES_SAMPLE = random.randint(50000,120000)
+    NUM_PRODUCTS_SAMPLE = random.randint(400, 483)
+    NUM_CUSTOMERS_SAMPLE = random.randint(7005, 10032)
+    NUM_SALES_SAMPLE = random.randint(50000, 120000)
 
     # Generate Suppliers Data (Sample)
     print("Supplier Data Generation in progress....")
-    suppliers_from_db = get_data("supplier",NUM_SUPPLIERS_SAMPLE)
+    suppliers_from_db = get_data("supplier", NUM_SUPPLIERS_SAMPLE)
 
     suppliers_sample = [
         {
@@ -107,15 +113,15 @@ async def generate_data():
         }
         for row in suppliers_from_db[:NUM_SUPPLIERS_SAMPLE]
     ]
-    print(f"*-*-*-*- Supplier Dataset Generated with : {NUM_SUPPLIERS_SAMPLE} records -*-*-*-*-*")
+    print(f"*-*-* Supplier Generated : {NUM_SUPPLIERS_SAMPLE} records *-*-*")
     await gs_bucket_auth_save(suppliers_sample, "supplier")
 
     # Generate Products Data (Sample)
     print("Products Data Generation in progress....")
-    products_from_db = get_data("product",NUM_PRODUCTS_SAMPLE)
+    products_from_db = get_data("product", NUM_PRODUCTS_SAMPLE)
 
     supplier_id_list = random.sample(
-        [supplier["Supplier Id"].strip() for supplier in suppliers_sample], 
+        [supplier["Supplier Id"].strip() for supplier in suppliers_sample],
         k=random.randint(210, 225)
     )
 
@@ -130,17 +136,17 @@ async def generate_data():
                 "Stock Quantity": random.randint(6000, 12000),
                 "Reorder Level": random.randint(10, 50),
                 "Supplier Id": random.choice(supplier_id_list),
-        }
+                                                             }
         )()
         for row in products_from_db[:NUM_PRODUCTS_SAMPLE]
     ]
 
-    print(f"*-*-*-*- Products Dataset Generated with : {NUM_PRODUCTS_SAMPLE} records -*-*-*-*-*")
+    print(f"*-*-* Products Generated : {NUM_PRODUCTS_SAMPLE} records *-*-*")
     await gs_bucket_auth_save(products_sample, "product")
 
     # Generate Customers Data (Sample)
     print("Customers Data Generation in progress....")
-    customer_from_db = get_data("customer",NUM_CUSTOMERS_SAMPLE)
+    customer_from_db = get_data("customer", NUM_CUSTOMERS_SAMPLE)
 
     customers_sample = [
         {
@@ -152,7 +158,7 @@ async def generate_data():
         }
         for row in customer_from_db[:NUM_CUSTOMERS_SAMPLE]
     ]
-    print(f"*-*-*-*- Customers Dataset Generated with : {NUM_CUSTOMERS_SAMPLE} records -*-*-*-*-*")
+    print(f"*-*-* Customers Generated : {NUM_CUSTOMERS_SAMPLE} records *-*-*")
     await gs_bucket_auth_save(customers_sample, "customer")
 
     # Generate Sales Data (Sample)
@@ -162,12 +168,12 @@ async def generate_data():
     random.shuffle(sale_ids)
 
     product_id_list = random.sample(
-        [product["Product Id"] for product in products_sample], 
+        [product["Product Id"] for product in products_sample],
         k=random.randint(300, 370)
     )
 
     customer_id_list = random.sample(
-        [customer["Customer Id"] for customer in customers_sample], 
+        [customer["Customer Id"] for customer in customers_sample],
         k=random.randint(6800, 7000)
     )
 
@@ -175,7 +181,9 @@ async def generate_data():
         quantity = random.randint(1, 20)
         discount = round(random.uniform(0, 17), 2)
         shipping_cost = round(random.uniform(5, 50), 2)
-        payment_mode = random.choice(["Credit Card", "Debit Card", "UPI", "Cash on Delivery"])
+        payment_mode = random.choice(
+                ["Credit Card", "Debit Card", "UPI", "Cash on Delivery"]
+                )
 
         # Generate realistic sale date
         sale_date_obj = fake.date_between(start_date="-2y", end_date="today")
@@ -184,9 +192,15 @@ async def generate_data():
 
         # Conditional Order Status based on how recent the order is
         if days_ago <= 50:
-            order_status = random.choices(["Pending", "Shipped"], weights=[70, 30], k=1)[0]
+            order_status = random.choices(
+                                            ["Pending", "Shipped"],
+                                            weights=[70, 30], k=1
+                                         )[0]
         else:
-            order_status = random.choices(["Delivered", "Cancelled"], weights=[90, 10], k=1)[0]
+            order_status = random.choices(
+                                            ["Delivered", "Cancelled"],
+                                            weights=[90, 10], k=1
+                                          )[0]
 
         sales_sample.append({
             "Sale Id": sale_id,
@@ -199,7 +213,7 @@ async def generate_data():
             "Order Status": order_status,
             "Payment Mode": payment_mode,
         })
-    print(f"*-*-*-*- Sales Dataset Generated with : {NUM_SALES_SAMPLE} records -*-*-*-*-*")
+    print(f"*-*-* Sales Generated : {NUM_SALES_SAMPLE} records *-*-*")
     await gs_bucket_auth_save(sales_sample, "sales")
 
 
@@ -231,18 +245,19 @@ def files_check():
 
     return server_ready
 
+
 @app.on_event("startup")
 async def startup_event():
     """
     Triggered on app startup. Checks if today's files exist in GCS,
-    otherwise generates fresh data for suppliers, products, customers, and sales.
+    otherwise generates data for suppliers, products, customers, and sales.
     """
     try:
         files_check()
         print("Fetched files successfully")
     except BaseException:
         print("Please Hold on, Files are not found.! Fetching from SAP")
-        await generate_data()        
+        await generate_data()
 
 
 @app.get("/")
@@ -253,7 +268,9 @@ async def do_wish():
     Returns:
         dict: Status and environment message.
     """
-    return {"status" : 200, "message" : f"You are accessing {env['MY_VARIABLE']} environment"}
+    return {"status": 200,
+            "message": f"You are accessing {env['MY_VARIABLE']} environment"}
+
 
 # Generate a token by calling this API
 @app.get("/v1/token")
@@ -264,11 +281,12 @@ def generate_token():
     Returns:
         dict: JWT access token.
     """
-    data = {"sub": "email"} 
+    data = {"sub": "email"}
     token = create_access_token(data)
     return {"access_token": token}
 
-# suppliers API to fetch the latest supplier data from the meta-morph-flow bucket
+
+# suppliers API to fetch the latest supplier data from the bucket
 @app.get("/v1/suppliers")
 async def load_suppliers_data():
     """
@@ -277,14 +295,15 @@ async def load_suppliers_data():
     Returns:
         dict: Supplier records.
     """
-    df = pd.read_csv(f"gs://meta-morph-flow/{today}/supplier_{today}.csv", 
-                        storage_options={
+    df = pd.read_csv(f"gs://meta-morph-flow/{today}/supplier_{today}.csv",
+                     storage_options={
                             "token": SERVICE_KEY
                         }
-                    ).set_index("Supplier Id")
+                     ).set_index("Supplier Id")
 
     supplier_result = df.reset_index().to_dict(orient="records")
-    return {"status" : 200, "data" : supplier_result}
+    return {"status": 200, "data": supplier_result}
+
 
 # products API to fetch the latest product data from the meta-morph-flow bucket
 @app.get("/v1/products")
@@ -295,16 +314,17 @@ async def load_products_data():
     Returns:
         dict: Product records.
     """
-    df = pd.read_csv(f"gs://meta-morph-flow/{today}/product_{today}.csv", 
-                        storage_options={
+    df = pd.read_csv(f"gs://meta-morph-flow/{today}/product_{today}.csv",
+                     storage_options={
                             "token": SERVICE_KEY
                         }
-                    ).set_index("Product Id")
+                     ).set_index("Product Id")
 
     product_result = df.reset_index().to_dict(orient="records")
-    return {"status" : 200, "data" : product_result}
+    return {"status": 200, "data": product_result}
 
-# customers API to fetch the latest customer data from the meta-morph-flow bucket
+
+# customers API to fetch the latest customer data
 @app.get("/v1/customers")
 async def load_customer_data(payload: dict = Depends(verify_token)):
     """
@@ -312,7 +332,7 @@ async def load_customer_data(payload: dict = Depends(verify_token)):
     Requires valid token for access.
 
     Parameters:
-        payload (dict): Decoded JWT token payload (auto-injected by FastAPI Depends).
+        payload (dict): Decoded JWT token payload (auto-injected by FastAPI).
 
     Returns:
         dict: Customer records.
