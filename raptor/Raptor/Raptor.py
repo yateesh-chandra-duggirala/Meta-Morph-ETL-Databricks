@@ -96,13 +96,14 @@ def _raptor_data_fetch(spark, username, password, source,source_db, sql):
     
     elif source.lower().strip() == "reporting":
         try : 
-            table_name = sql.split('reporting.')[1].split(' ')[0].lower()
+            table_name = sql.replace('"','').strip().split('reporting.')[1].split(' ')[0].lower()
             if 'reporting.' in sql:
                 dataframe = _get_gcs_data(spark, table_name, sql)
             else : 
                 raise Exception("Reporting data does not exist ..!")
         except Exception as e :
             logging.error(e)
+            raise e
         
     else : 
         raise Exception(f"Source ({source}) not Supported")
