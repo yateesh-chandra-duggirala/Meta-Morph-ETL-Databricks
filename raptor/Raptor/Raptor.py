@@ -10,7 +10,6 @@ import smtplib
 from pyspark.sql.window import Window
 import logging
 import psycopg2
-from datetime import datetime
 import re
 
 today = datetime.now().strftime("%Y%m%d")
@@ -31,7 +30,7 @@ def _read_data(username, password, spark, database,
             .option("driver", "org.postgresql.Driver")\
             .option("dbtable", db)\
             .load()
-        logging.info(f"Retrieved Data...")
+        logging.info("Retrieved Data...")
     except Exception as e:
         logging.error("An Exception occurred")
         raise e
@@ -106,7 +105,7 @@ def _write_into_gcs_data(df, work_location):
     df.write.mode("overwrite").parquet(
         f"gs://raptor-workflow/{today}/{work_location}"
     )
-    logging.info(f"successfully written into raptor-workflow")
+    logging.info("successfully written into raptor-workflow")
 
 
 # Create a function to return the data frame based on the type of source
