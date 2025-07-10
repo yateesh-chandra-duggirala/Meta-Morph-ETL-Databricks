@@ -2,7 +2,7 @@ from jose import jwt, JWTError
 from datetime import timedelta, datetime
 from fastapi import Header, HTTPException, status
 from typing import Annotated
-from my_secrets import *
+from my_secrets import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 
 
 def create_access_token(data: dict,
