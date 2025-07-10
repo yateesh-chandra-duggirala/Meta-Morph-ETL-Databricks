@@ -177,7 +177,7 @@ def product_performance_ingestion():
         write_into_table(
             table="product_performance",
             data_frame=Shortcut_To_Products_Performance_tgt,
-            schema="dev_legacy",
+            schema="legacy",
             strategy="append"
         )
 
