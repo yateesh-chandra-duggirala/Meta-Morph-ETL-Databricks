@@ -13,6 +13,7 @@ from tasks.m_customer_sales_report_task import customer_sales_report_ingestion
 from tasks.m_customer_metrics_task import customer_metrics_upsert
 from tasks.m_push_data_to_gcs_reporting import push_data_to_reporting
 
+
 # Create a Dag
 @dag(
     dag_id="meta_morph_pipeline",
@@ -48,9 +49,10 @@ def ingestion():
     customer_metrics = customer_metrics_upsert()
 
     TABLES = ["products", "suppliers", "sales", "customers",
-            "customer_sales_report", "product_performance", 
-            "supplier_performance"]
-    
+              "customer_sales_report", "product_performance",
+              "supplier_performance"
+              ]
+
     gcs_load = push_data_to_reporting.expand(table_name=TABLES)
 
     # Set the Tasks Dependency
