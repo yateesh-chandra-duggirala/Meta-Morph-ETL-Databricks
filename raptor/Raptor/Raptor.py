@@ -11,6 +11,7 @@ from pyspark.sql.window import Window
 import logging
 import psycopg2
 from datetime import datetime
+import re
 
 today = datetime.now().strftime("%Y%m%d")
 
@@ -118,11 +119,13 @@ def _raptor_data_fetch(spark, username, password, source, source_db, sql):
 
     elif source.lower().strip() == "reporting":
         try:
-            table_name = sql.replace('"', '').strip().split(
+            _sql = re.sub(r'\s+', ' ', sql).replace('"', '').strip()
+            table_name = _sql.split(
                 'reporting.'
             )[1].split(' ')[0].lower()
-            if 'reporting.' in sql:
-                dataframe = _get_gcs_data(spark, table_name, sql)
+            logging.info(table_name)
+            if 'reporting.' in _sql:
+                dataframe = _get_gcs_data(spark, table_name, _sql)
             else:
                 raise Exception("Reporting data does not exist ..!")
         except Exception as e:
