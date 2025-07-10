@@ -261,7 +261,7 @@ def customer_sales_report_ingestion():
         write_into_table(
             table="customer_sales_report",
             data_frame=Shortcut_To_CSR_Tgt,
-            schema="dev_legacy",
+            schema="legacy",
             strategy="append"
         )
 
