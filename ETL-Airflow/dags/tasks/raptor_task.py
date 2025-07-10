@@ -1,7 +1,4 @@
 from airflow.decorators import task
-from pyspark.sql.functions import *
-from pyspark.sql.window import *
-from pyspark.sql.types import *
 from tasks.my_secrets import USERNAME, PASSWORD
 from Raptor.Raptor import Raptor
 from tasks.utils import get_spark_session

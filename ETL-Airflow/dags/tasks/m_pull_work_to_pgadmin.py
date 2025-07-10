@@ -1,6 +1,4 @@
 from airflow.decorators import task
-from airflow.models.xcom_arg import XComArg
-from airflow.utils.task_group import TaskGroup
 from .my_secrets import SERVICE_KEY
 from tasks.utils import get_list_of_tables, get_spark_session, write_into_table
 from google.cloud import storage
