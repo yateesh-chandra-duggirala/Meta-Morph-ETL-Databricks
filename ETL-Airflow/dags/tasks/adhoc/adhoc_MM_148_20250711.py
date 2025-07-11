@@ -14,9 +14,8 @@ def push_data_to_reporting():
         spark = get_spark_session()
         table_name = 'customer_sales_report'
         df = read_data(spark, f"legacy.{table_name}")
-        today_df = df.filter(col("DAY_DT") == current_date())
-        logging.info(f"Loading {today_df.count()} records into {table_name}")
-        today_df.write.mode("overwrite").parquet(
+        logging.info(f"Loading {df.count()} records into {table_name}")
+        df.write.mode("overwrite").parquet(
             f"gs://reporting-lgcy/{table_name}"
         )
         logging.info(
