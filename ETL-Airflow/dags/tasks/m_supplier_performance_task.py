@@ -196,7 +196,7 @@ def suppliers_performance_ingestion():
         write_into_table(
             table="supplier_performance",
             data_frame=Shortcut_To_Suppliers_Performance_tgt,
-            schema="dev_legacy",
+            schema="legacy",
             strategy="append"
         )
 
