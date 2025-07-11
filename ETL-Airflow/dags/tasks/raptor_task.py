@@ -20,14 +20,14 @@ def trigger_raptor():
         source_db='meta_morph',
         target_type='reporting',
         source_sql="""
-                    SELECT * FROM legacy.supplier_performance
+                    SELECT * FROM legacy.customer_sales_report
                     """,
         target_sql="""
-                    SELECT * FROM reporting.supplier_performance
+                    SELECT * FROM reporting.customer_sales_report
                     """,
         email='yateed1437@gmail.com',
-        output_table_name='supplier_performance',
-        primary_key='SUPPLIER_ID,DAY_DT'
+        output_table_name='customer_sales_report',
+        primary_key='SALE_ID,DAY_DT'
     )
 
     return 'The Comparison Report is sent to the recipient..!'
