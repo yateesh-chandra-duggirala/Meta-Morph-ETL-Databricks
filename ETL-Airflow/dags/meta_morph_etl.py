@@ -57,13 +57,16 @@ def ingestion():
 
     # Set the Tasks Dependency
     for upstream in [suppliers, customers, products, sales]:
-        for downstream in [supplier_performance, product_performance]:
+        for downstream in [supplier_performance,
+                           product_performance, customer_metrics
+                           ]:
             upstream >> downstream
 
     # Downstream flow
-    [supplier_performance, product_performance] >> customer_sales_report
-    customer_sales_report >> customer_metrics
-    customer_metrics >> gcs_load
+    [supplier_performance, product_performance,
+     customer_metrics
+     ] >> customer_sales_report
+    customer_sales_report >> gcs_load
 
 
 # Call the Ingestion Dag Function
