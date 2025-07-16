@@ -63,8 +63,7 @@ def ingestion():
             upstream >> downstream
 
     # Downstream flow
-    [supplier_performance, product_performance,
-     customer_metrics
+    [supplier_performance, product_performance
      ] >> customer_sales_report
     customer_sales_report >> gcs_load
 
