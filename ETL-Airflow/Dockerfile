@@ -4,7 +4,7 @@ USER root
 
 # Install required dependencies
 RUN apt update && \
-    apt-get install -y openjdk-17-jdk ant wget && \
+    apt-get install -y git openjdk-17-jdk ant wget && \
     apt-get clean;
 
 # Install Google Cloud Storage Connector for Spark
