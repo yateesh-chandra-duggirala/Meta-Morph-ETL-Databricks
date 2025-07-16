@@ -9,7 +9,7 @@ from tasks.utils import (
     DuplicateChecker
 )
 from pyspark.sql.functions import (
-    col, trim, coalesce, when, sum, round,
+    col, trim, coalesce, sum, round,
     row_number, desc, current_date, count, lit
 )
 from pyspark.sql.window import Window
@@ -123,61 +123,66 @@ def suppliers_performance_ingestion():
         )
     logging.info("Data Frame : 'AGG_TRANS' is built...")
 
-    # Process the Node : JNR_ALL - Join to get all suppliers
-    JNR_ALL = JNR_Master.alias('mstr') \
+    # Process the Node : EXP_Product_Revenue - Join to get all suppliers
+    EXP_Product_Revenue = JNR_Master \
+        .withColumn(
+            "product_revenue",
+            (
+                col("selling_price") * col("quantity")
+            ) * (1 - col("discount") / 100.0)
+        ) \
+        .groupBy("supplier_id", "product_name") \
+        .agg(
+            round(sum("product_revenue"), 2).alias("product_revenue")
+        )
+    logging.info("Data Frame : 'EXP_Product_Revenue' is built...")
+
+    # Define the window spec to rank products by revenue per supplier
+    window_spec = Window.partitionBy(
+        "supplier_id"
+        ).orderBy(desc("product_revenue"))
+
+    # Process the Node : RNK_Revenue - Rank over Revenue
+    RNK_Revenue = EXP_Product_Revenue \
+        .withColumn("rnk", row_number().over(window_spec)) \
+        .filter(col("rnk") == 1) \
+        .withColumnRenamed("product_name", "top_product") \
+        .select("supplier_id", "top_product")
+    logging.info("Data Frame : 'RNK_Revenue' is built...")
+
+    # Process the Node : JNR_Suppliers_Performance - Joins dataframes
+    JNR_Suppliers_Performance = AGG_TRANS.alias("agg") \
         .join(
-            AGG_TRANS.alias('exps'),
-            trim(col("mstr.supplier_id")) == trim(col("exps.supplier_id")),
+            SQ_Shortcut_To_Suppliers.alias("s"),
+            trim(col("agg.supplier_id")) == trim(col("s.supplier_id")),
+            "left"
+        ) \
+        .join(
+            RNK_Revenue.alias("rr"),
+            trim(col("agg.supplier_id")) == trim(col("rr.supplier_id")),
             "left"
         ) \
         .select(
-            col("mstr.supplier_id").alias("supplier_id"),
-            col("mstr.supplier_name").alias("supplier_name"),
-            col("exps.agg_total_revenue").alias("agg_total_revenue"),
-            col("exps.agg_total_products_sold").alias(
-                "agg_total_products_sold"
-            ),
-            col("exps.agg_total_stocks_sold").alias(
-                "agg_total_stocks_sold"
-            ),
-            col("mstr.product_name").alias("product_name")
-        )
-    logging.info("Data Frame : 'JNR_ALL' is built...")
-
-    # Process the Node : EXP_Suppliers_Performance - Assigns rank
-    window_spec = Window.partitionBy(
-        col("supplier_id")
-    ).orderBy(
-        desc("agg_total_revenue"),
-        desc("agg_total_stocks_sold")
-    )
-    EXP_Suppliers_Performance = JNR_ALL \
-        .withColumn(
-            "rnk", row_number().over(window_spec)
+            col("agg.supplier_id").alias("supplier_id"),
+            col("s.supplier_name").alias("supplier_name"),
+            col("agg.agg_total_revenue").alias("total_revenue"),
+            col("agg.agg_total_products_sold").alias("total_products_sold"),
+            col("agg.agg_total_stocks_sold").alias("total_stocks_sold"),
+            col("rr.top_product").alias("top_product")
         ) \
-        .filter("rnk = 1") \
-        .withColumn(
-            "product_name",
-            when(
-                col("agg_total_revenue") > 0,
-                col("product_name")
-            )
-            .otherwise(lit(None).cast("string"))
-        ) \
-        .drop(col("rnk")) \
         .withColumn("day_dt", current_date())
-    logging.info("Data Frame : 'EXP_Suppliers_Performance' is built...")
+    logging.info("Data Frame : 'JNR_Suppliers_Performance' is built...")
 
     # Process the Node : Shortcut_To_Suppliers_Performance_tgt - The Target
-    Shortcut_To_Suppliers_Performance_tgt = EXP_Suppliers_Performance \
+    Shortcut_To_Suppliers_Performance_tgt = JNR_Suppliers_Performance \
         .select(
                 col("day_dt").alias("DAY_DT"),
                 col("supplier_id").alias("SUPPLIER_ID"),
                 col("supplier_name").alias("SUPPLIER_NAME"),
-                col("agg_total_revenue").alias("TOTAL_REVENUE"),
-                col("agg_total_products_sold").alias("TOTAL_PRODUCTS_SOLD"),
-                col("agg_total_stocks_sold").alias("TOTAL_STOCK_SOLD"),
-                col("product_name").alias("TOP_SELLING_PRODUCT")
+                col("total_revenue").alias("TOTAL_REVENUE"),
+                col("total_products_sold").alias("TOTAL_PRODUCTS_SOLD"),
+                col("total_stocks_sold").alias("TOTAL_STOCK_SOLD"),
+                col("top_product").alias("TOP_SELLING_PRODUCT")
         )
     logging.info(
         "Data Frame : 'Shortcut_To_Suppliers_Performance_tgt' is built..."
