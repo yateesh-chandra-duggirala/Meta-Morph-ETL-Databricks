@@ -98,6 +98,7 @@ services:
   scheduler-prod:
     image: etl-airflow_aa9abc/airflow:latest
     environment:
+      - ENV=prod
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__SCHEDULER__MAX_THREADS=10
       - AIRFLOW__CORE__PARALLELISM=10
@@ -117,6 +118,7 @@ services:
   triggerer-prod:
     image: etl-airflow_aa9abc/airflow:latest
     environment:
+      - ENV=prod
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@host.docker.internal:5432/meta_morph
       - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/prod_dags

@@ -1,7 +1,8 @@
 # Import Libraries
 from airflow.decorators import dag
 from datetime import datetime
-from tasks.adhoc.adhoc_MM_148_20250711 import push_data_to_reporting
+from tasks.adhoc.adhoc_env_test import test_environment
+import os
 
 
 # Create a Dag
@@ -12,8 +13,8 @@ from tasks.adhoc.adhoc_MM_148_20250711 import push_data_to_reporting
     catchup=False,
 )
 def ingestion():
-
-    push_data_to_reporting()
+    env = os.getenv("ENV", "dev")
+    test_environment(env)
 
 
 # Call the Ingestion Dag Function
