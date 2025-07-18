@@ -12,6 +12,7 @@ from tasks.m_product_performance_task import product_performance_ingestion
 from tasks.m_customer_sales_report_task import customer_sales_report_ingestion
 from tasks.m_customer_metrics_task import customer_metrics_upsert
 from tasks.m_push_data_to_gcs_reporting import push_data_to_reporting
+import os
 
 
 # Create a Dag
@@ -25,35 +26,40 @@ from tasks.m_push_data_to_gcs_reporting import push_data_to_reporting
 )
 def ingestion():
 
+    env = os.getenv('ENV', 'dev')
+
     # Make a function call for the Suppliers task
-    suppliers = supplier_data_ingestion()
+    suppliers = supplier_data_ingestion(env)
 
     # Make a function call for the Customer task
-    customers = customer_data_ingestion()
+    customers = customer_data_ingestion(env)
 
     # Make a function call for the Products task
-    products = products_data_ingestion()
+    products = products_data_ingestion(env)
 
     # Make a function call for the Sales task
-    sales = sales_data_ingestion()
+    sales = sales_data_ingestion(env)
 
     # Make a function call for loading the Suppliers Performance task
-    supplier_performance = suppliers_performance_ingestion()
+    supplier_performance = suppliers_performance_ingestion(env)
 
     # Make a function call for loading the Product Performance Task
-    product_performance = product_performance_ingestion()
+    product_performance = product_performance_ingestion(env)
 
     # Make a function call for loading the Product Performance Task
-    customer_sales_report = customer_sales_report_ingestion()
+    customer_sales_report = customer_sales_report_ingestion(env)
 
-    customer_metrics = customer_metrics_upsert()
+    customer_metrics = customer_metrics_upsert(env)
 
     TABLES = ["products", "suppliers", "sales", "customers",
               "customer_sales_report", "product_performance",
               "supplier_performance"
               ]
 
-    gcs_load = push_data_to_reporting.expand(table_name=TABLES)
+    gcs_load = push_data_to_reporting.expand_kwargs([
+        {"env": env, "table_name": table} for table in TABLES
+    ])
+
 
     # Set the Tasks Dependency
     for upstream in [suppliers, customers, products, sales]:

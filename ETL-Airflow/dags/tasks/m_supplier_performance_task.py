@@ -6,7 +6,8 @@ from tasks.utils import (
     write_into_table,
     abort_session,
     read_data,
-    DuplicateChecker
+    DuplicateChecker,
+    fetch_env_schema
 )
 from pyspark.sql.functions import (
     col, trim, coalesce, sum, round,
@@ -17,7 +18,7 @@ from pyspark.sql.window import Window
 
 # Create a task that helps in Populating Suppliers Performance Table
 @task(task_id="m_load_suppliers_performance")
-def suppliers_performance_ingestion():
+def suppliers_performance_ingestion(env):
     """
     Create a function to load the Suppliers Performance
 
@@ -26,11 +27,15 @@ def suppliers_performance_ingestion():
     Raises: Duplicate exception if any Duplicates are found..
     """
 
+    schema_dict = fetch_env_schema(env)
+    raw = schema_dict['raw']
+    legacy = schema_dict['legacy']
+
     # Get a spark session
     spark = get_spark_session()
 
     # Process the Node : SQ_Shortcut_To_Suppliers - reads from Suppliers_pre
-    SQ_Shortcut_To_Suppliers = read_data(spark, "raw.suppliers_pre")
+    SQ_Shortcut_To_Suppliers = read_data(spark, f"{raw}.suppliers_pre")
     SQ_Shortcut_To_Suppliers = SQ_Shortcut_To_Suppliers \
         .select(
             col("supplier_id"),
@@ -39,7 +44,7 @@ def suppliers_performance_ingestion():
     logging.info("Data Frame : 'SQ_Shortcut_To_Suppliers' is built...")
 
     # Process the Node : SQ_Shortcut_To_Products - reads from Products_pre
-    SQ_Shortcut_To_Products = read_data(spark, "raw.products_pre")
+    SQ_Shortcut_To_Products = read_data(spark, f"{raw}.products_pre")
     SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
         .select(
             col("product_id"),
@@ -50,7 +55,7 @@ def suppliers_performance_ingestion():
     logging.info("Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads from Sales_pre
-    SQ_Shortcut_To_Sales = read_data(spark, "raw.sales_pre")
+    SQ_Shortcut_To_Sales = read_data(spark, f"{raw}.sales_pre")
     SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
         .select(
             col("sale_id"),
@@ -201,7 +206,7 @@ def suppliers_performance_ingestion():
         write_into_table(
             table="supplier_performance",
             data_frame=Shortcut_To_Suppliers_Performance_tgt,
-            schema="legacy",
+            schema=legacy,
             strategy="append"
         )
 
