@@ -6,7 +6,8 @@ from tasks.utils import (
     write_into_table,
     abort_session,
     read_data,
-    DuplicateChecker
+    DuplicateChecker,
+    fetch_env_schema
 )
 from pyspark.sql.functions import (
     col, coalesce, when, sum, round, current_date, lit
@@ -15,7 +16,7 @@ from pyspark.sql.functions import (
 
 # Create a task that helps in populating Products_Performance
 @task(task_id="m_load_products_performance")
-def product_performance_ingestion():
+def product_performance_ingestion(env):
     """
     Create a function to load the Products Performance
 
@@ -24,11 +25,15 @@ def product_performance_ingestion():
     Raises: Duplicate exception if any Duplicates are found..
     """
 
+    schema_dict = fetch_env_schema(env)
+    raw = schema_dict['raw']
+    legacy = schema_dict['legacy']
+
     # Get a spark session
     spark = get_spark_session()
 
     # Process the Node : SQ_Shortcut_To_Products - reads from Products_pre
-    SQ_Shortcut_To_Products = read_data(spark, "raw.products_pre")
+    SQ_Shortcut_To_Products = read_data(spark, f"{raw}.products_pre")
     SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
         .select(
             col("product_id"),
@@ -42,7 +47,7 @@ def product_performance_ingestion():
     logging.info("Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads from Sales_pre Table
-    SQ_Shortcut_To_Sales = read_data(spark, "raw.sales_pre")
+    SQ_Shortcut_To_Sales = read_data(spark, f"{raw}.sales_pre")
     SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
         .select(
             col("product_id"),
@@ -177,7 +182,7 @@ def product_performance_ingestion():
         write_into_table(
             table="product_performance",
             data_frame=Shortcut_To_Products_Performance_tgt,
-            schema="legacy",
+            schema=legacy,
             strategy="append"
         )
 

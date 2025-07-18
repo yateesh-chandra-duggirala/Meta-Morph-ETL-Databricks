@@ -7,7 +7,8 @@ from tasks.utils import (
     abort_session,
     read_data,
     DuplicateChecker,
-    execute_merge
+    execute_merge,
+    fetch_env_schema
 )
 from pyspark.sql.functions import (
     col, coalesce, when, sum, round, current_date, lit,
@@ -19,7 +20,7 @@ from pyspark.sql.window import Window
 
 # Create a task that helps in Populating Suppliers Performance Table
 @task(task_id="m_load_customer_metrics")
-def customer_metrics_upsert():
+def customer_metrics_upsert(env):
     """
     Create a function to upsert into the Customer Metrics
 
@@ -28,11 +29,15 @@ def customer_metrics_upsert():
     Raises: Duplicate exception if any Duplicates are found..
     """
 
+    schema_dict = fetch_env_schema(env)
+    staging = schema_dict['staging']
+    legacy = schema_dict['legacy']
+
     # Get a spark session
     spark = get_spark_session()
 
     # Process the Node : SQ_Shortcut_To_Customers - reads data from Customers
-    SQ_Shortcut_To_Customers = read_data(spark, "legacy.customers")
+    SQ_Shortcut_To_Customers = read_data(spark, f"{legacy}.customers")
     SQ_Shortcut_To_Customers = SQ_Shortcut_To_Customers \
         .select(
             col("customer_id"),
@@ -44,7 +49,7 @@ def customer_metrics_upsert():
     logging.info("Data Frame : 'SQ_Shortcut_To_Customers' is built...")
 
     # Process the Node : SQ_Shortcut_To_Products - reads data from Products
-    SQ_Shortcut_To_Products = read_data(spark, "legacy.products")
+    SQ_Shortcut_To_Products = read_data(spark, f"{legacy}.products")
     SQ_Shortcut_To_Products = SQ_Shortcut_To_Products \
         .select(
             col("product_id"),
@@ -53,7 +58,7 @@ def customer_metrics_upsert():
     logging.info("Data Frame : 'SQ_Shortcut_To_Products' is built...")
 
     # Process the Node : SQ_Shortcut_To_Sales - reads data from Sales
-    SQ_Shortcut_To_Sales = read_data(spark, "legacy.sales")
+    SQ_Shortcut_To_Sales = read_data(spark, f"{legacy}.sales")
     SQ_Shortcut_To_Sales = SQ_Shortcut_To_Sales \
         .select(
             col("sale_id"),
@@ -266,10 +271,10 @@ def customer_metrics_upsert():
         write_into_table(
             table="customer_metrics_stg",
             data_frame=Shortcut_To_Customer_Metrics,
-            schema="staging",
+            schema=staging,
             strategy="overwrite"
         )
-        execute_merge("staging.customer_metrics_stg")
+        execute_merge(f"{staging}.customer_metrics_stg", f"{legacy}.CUSTOMER_METRICS")
 
     except Exception as e:
 

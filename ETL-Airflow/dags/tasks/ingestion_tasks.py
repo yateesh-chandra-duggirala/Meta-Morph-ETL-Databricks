@@ -5,13 +5,19 @@ from pyspark.sql.functions import current_date, col
 import logging
 from datetime import datetime
 import pytz
-from tasks.utils import get_spark_session, write_into_table, abort_session, \
-    APIClient, DuplicateChecker
+from tasks.utils import (
+    get_spark_session,
+    write_into_table,
+    abort_session,
+    APIClient,
+    DuplicateChecker,
+    fetch_env_schema
+)
 
 
 # Create a task that helps in ingesting the data into Suppliers
 @task(task_id="m_ingest_data_into_suppliers")
-def supplier_data_ingestion():
+def supplier_data_ingestion(env):
     """
     Create a function to ingest into Suppliers
 
@@ -19,6 +25,10 @@ def supplier_data_ingestion():
 
     Raises: Duplicate Exception in case of any Duplicates
     """
+
+    schema_dict = fetch_env_schema(env)
+    raw = schema_dict['raw']
+    legacy = schema_dict['legacy']
 
     # Create an object for the Suppliers API Client Class
     client = APIClient()
@@ -61,8 +71,8 @@ def supplier_data_ingestion():
         chk.has_duplicates(suppliers_df, ['SUPPLIER_ID'])
 
         # Load the data into the tables
-        write_into_table("suppliers_pre", suppliers_df, "raw", "overwrite")
-        write_into_table(api, suppliers_df_lgcy, "legacy", "append")
+        write_into_table("suppliers_pre", suppliers_df, raw, "overwrite")
+        write_into_table(api, suppliers_df_lgcy, legacy, "append")
 
     except Exception as e:
 
@@ -80,7 +90,7 @@ def supplier_data_ingestion():
 
 # Create a task that helps in ingesting the data into Customers
 @task(task_id="m_ingest_data_into_customers")
-def customer_data_ingestion():
+def customer_data_ingestion(env):
     """
     Create a function to ingest into Customers
 
@@ -88,6 +98,11 @@ def customer_data_ingestion():
 
     Raises: Duplicate Exception in case of any Duplicates
     """
+
+    schema_dict = fetch_env_schema(env)
+    raw = schema_dict['raw']
+    legacy = schema_dict['legacy']
+
     # Create an object for the Suppliers API Client Class
     client = APIClient()
 
@@ -131,8 +146,8 @@ def customer_data_ingestion():
         chk.has_duplicates(customer_df, ['CUSTOMER_ID'])
 
         # Load the data into the tables
-        write_into_table("customers_pre", customer_df, "raw", "overwrite")
-        write_into_table(api, customer_df_lgcy, "legacy", "append")
+        write_into_table("customers_pre", customer_df, raw, "overwrite")
+        write_into_table(api, customer_df_lgcy, legacy, "append")
 
     except Exception as e:
 
@@ -150,7 +165,7 @@ def customer_data_ingestion():
 
 # Create a task that helps in ingesting the data into Products
 @task(task_id="m_ingest_data_into_products")
-def products_data_ingestion():
+def products_data_ingestion(env):
     """
     Create a function to ingest into Products
 
@@ -158,6 +173,10 @@ def products_data_ingestion():
 
     Raises: Duplicate Exception in case of any Duplicates
     """
+
+    schema_dict = fetch_env_schema(env)
+    raw = schema_dict['raw']
+    legacy = schema_dict['legacy']
 
     # Create an object for the Suppliers API Client Class
     client = APIClient()
@@ -208,8 +227,8 @@ def products_data_ingestion():
         chk.has_duplicates(product_df, ['PRODUCT_ID'])
 
         # Load the data into the tables
-        write_into_table("products_pre", product_df, "raw", "overwrite")
-        write_into_table(api, product_df_lgcy, "legacy", "append")
+        write_into_table("products_pre", product_df, raw, "overwrite")
+        write_into_table(api, product_df_lgcy, legacy, "append")
 
     except Exception as e:
 
@@ -227,7 +246,7 @@ def products_data_ingestion():
 
 # Create a task that helps the data in ingesting the data into sales
 @task(task_id="m_ingest_data_into_sales")
-def sales_data_ingestion():
+def sales_data_ingestion(env):
     """
     Create a function to ingest into Sales
 
@@ -235,6 +254,10 @@ def sales_data_ingestion():
 
     Raises: Duplicate Exception in case of any Duplicates
     """
+
+    schema_dict = fetch_env_schema(env)
+    raw = schema_dict['raw']
+    legacy = schema_dict['legacy']
 
     india_tz = pytz.timezone("Asia/Kolkata")
     today = datetime.now(india_tz).strftime("%Y%m%d")
@@ -290,8 +313,8 @@ def sales_data_ingestion():
         chk.has_duplicates(sales_df, ['SALE_ID'])
 
         # Load the data into the table
-        write_into_table("sales_pre", sales_df, "raw", "overwrite")
-        write_into_table(api, sales_df_lgcy, "legacy", "append")
+        write_into_table("sales_pre", sales_df, raw, "overwrite")
+        write_into_table(api, sales_df_lgcy, legacy, "append")
 
     except Exception as e:
 

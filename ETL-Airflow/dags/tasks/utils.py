@@ -140,6 +140,27 @@ def get_spark_session():
     return spark
 
 
+# This function assigns the environment related schemas
+def fetch_env_schema(env):
+    if env == 'prod':
+        logging.info('PRODUCTION Environment..!')
+        result = {
+            "raw" : "raw",
+            "legacy" : "legacy",
+            "staging" : "staging",
+            "gcs_legacy" : "gs://reporting-lgcy"
+        }
+    else:
+        logging.info('DEVELOPMENT Environment..!')
+        result = {
+            "raw" : "dev_raw",
+            "legacy" : "dev_legacy",
+            "staging" : "dev_staging",
+            "gcs_legacy" : "gs://dev-reporting-lgcy"
+        }
+    return result
+
+
 # Define a function named read_data
 def read_data(spark, table):
     """
@@ -209,7 +230,7 @@ def write_into_table(table, data_frame, schema, strategy):
 
 
 # Define a function named write_to_gcs
-def write_to_gcs(dataframe, location):
+def write_to_gcs(dataframe, gcs_path, location):
     """
     Writes the data into GCS Bucket Location
 
@@ -217,8 +238,8 @@ def write_to_gcs(dataframe, location):
     dataframe (Dataframe): The Spark Dataframe which we want to write
     location (String): The target GCS Location where to write
     """
-    logging.info("Authenticating to GCS to load the data into parquet file..")
-    dataframe.write.mode("append").parquet(f"gs://reporting-lgcy/{location}")
+    logging.info(f"Authenticating to {gcs_path} to load the data into parquet file..")
+    dataframe.write.mode("append").parquet(f"{gcs_path}/{location}")
     logging.info(f"Loaded into Parquet File : {location}")
 
 
@@ -295,7 +316,7 @@ def get_list_of_tables(schema: str) -> List[str]:
 
 
 # Executing Merge Statement on the PG Admin
-def execute_merge(source_table: str):
+def execute_merge(source_table: str, target_table: str):
     """
     Executes the Merge statement in the PG Admin
 
@@ -326,7 +347,7 @@ def execute_merge(source_table: str):
         # Query information_schema for all tables in the specified schema
         cursor.execute(
             f"""
-            MERGE INTO legacy.CUSTOMER_METRICS as tgt
+            MERGE INTO {target_table} as tgt
             USING {source_table} as src
             ON tgt."CUSTOMER_ID" = src."CUSTOMER_ID"
             WHEN MATCHED THEN
