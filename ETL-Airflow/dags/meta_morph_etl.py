@@ -21,7 +21,7 @@ import os
     start_date=datetime(2024, 1, 1),
     schedule_interval=None,
     catchup=False,
-    max_active_tasks=7,
+    max_active_tasks=4,
     schedule=None
 )
 def ingestion():

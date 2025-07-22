@@ -104,10 +104,10 @@ class DuplicateChecker:
         Duplicate Exception if the Duplicates are found.
         """
         logging.info("Checking for the duplicates in the provided Dataset")
-        grouped_df = df.groupBy(primary_key_list) \
+        grouped_df = df.repartition(4, *primary_key_list).groupBy(primary_key_list) \
             .agg(count('*').alias('cnt'))\
             .filter('cnt > 1')
-        if grouped_df.count() > 0:
+        if grouped_df.limit(1).count() > 0:
             raise DuplicateException
         logging.info("Duplicate Check successful.. No Duplicates found...")
 
@@ -125,12 +125,21 @@ def get_spark_session():
 
     # Create a spark session
     spark = SparkSession.builder.appName("GCS_to_Postgres") \
+        .master("local[*]") \
         .config("spark.jars", SPARK_JARS) \
         .config("spark.hadoop.fs.gs.impl",
                 "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem") \
         .config("spark.sql.session.timeZone", "Asia/Kolkata") \
         .config("spark.hadoop.fs.AbstractFileSystem.gs.impl",
                 "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS") \
+        .config("spark.driver.memory", "1g") \
+        .config("spark.executor.memory", "1g") \
+        .config("spark.driver.maxResultSize", "512m") \
+        .config("spark.executor.cores", "1") \
+        .config("spark.cores.max", "2") \
+        .config("spark.default.parallelism", "2") \
+        .config("spark.sql.shuffle.partitions", "2") \
+        .config("spark.ui.port", "4041") \
         .getOrCreate()
     spark._jsc.hadoopConfiguration().set(
         "google.cloud.auth.service.account.json.keyfile",
@@ -183,6 +192,7 @@ def read_data(spark, table):
                     "jdbc:postgresql://host.docker.internal:5432/meta_morph")\
             .option("user", USERNAME)\
             .option("password", PASSWORD)\
+            .option("numPartitions", 4) \
             .option("driver", "org.postgresql.Driver")\
             .option("dbtable", table)\
             .load()
@@ -239,7 +249,7 @@ def write_to_gcs(dataframe, gcs_path, location):
     location (String): The target GCS Location where to write
     """
     logging.info(f"Authenticating to {gcs_path} to load the data into parquet file..")
-    dataframe.write.mode("append").parquet(f"{gcs_path}/{location}")
+    dataframe.repartition(2).write.mode("append").parquet(f"{gcs_path}/{location}")
     logging.info(f"Loaded into Parquet File : {location}")
 
 
