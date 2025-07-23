@@ -23,7 +23,7 @@ def push_data_to_reporting(env, table_name: str):
         gcs_legacy = schema_dict['gcs_legacy']
         spark = get_spark_session()
         df = read_data(spark, f"{legacy}.{table_name}")
-        today_df = df.filter(col("DAY_DT") == current_date()).cache()
+        today_df = df.filter(col("DAY_DT") == current_date())
         logging.info(f"Loading {today_df.count()} records into {table_name}")
         write_to_gcs(today_df, gcs_legacy, table_name)
     except Exception as e:

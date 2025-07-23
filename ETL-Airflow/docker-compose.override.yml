@@ -25,6 +25,8 @@ services:
       - ./jars:/usr/local/airflow/jars
     networks:
       - airflow
+    cpus: 1.0
+    mem_limit: 1024m
 
   spark-worker:
     image: bitnami/spark:latest
@@ -50,6 +52,8 @@ services:
       - spark-master
     networks:
       - airflow
+    cpus: 2.0
+    mem_limit: 4096m
 
   superset:
     image: superset-custom:latest
@@ -62,6 +66,8 @@ services:
       - superset_home:/app/superset_home
     networks:
       - airflow
+    cpus: 0.5
+    mem_limit: 512m
     command: >
       /bin/sh -c "
       superset db upgrade &&
@@ -76,6 +82,9 @@ services:
     environment:
       - ENV=prod
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__SCHEDULER__MAX_THREADS=4
+      - AIRFLOW__CORE__PARALLELISM=4
+      - AIRFLOW__CORE__DAG_CONCURRENCY=4
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@host.docker.internal:5432/meta_morph
       - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/prod_dags
       - AIRFLOW__WEBSERVER__SECRET_KEY=98UaXRJpmpMLQxApaCw9ZA==
@@ -85,6 +94,8 @@ services:
       - ./prod_dags:/usr/local/airflow/prod_dags
     networks:
       - airflow
+    cpus: 1.0
+    mem_limit: 1024m
     command: >
       /bin/bash -c "
       rm -rf /tmp/repo &&
@@ -94,15 +105,17 @@ services:
       airflow sync-perm &&
       airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin &&
       airflow webserver --port 3600"
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
 
   scheduler-prod:
     image: etl-airflow_aa9abc/airflow:latest
     environment:
       - ENV=prod
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__SCHEDULER__MAX_THREADS=10
-      - AIRFLOW__CORE__PARALLELISM=10
-      - AIRFLOW__CORE__DAG_CONCURRENCY=10
+      - AIRFLOW__SCHEDULER__MAX_THREADS=4
+      - AIRFLOW__CORE__PARALLELISM=4
+      - AIRFLOW__CORE__DAG_CONCURRENCY=4
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@host.docker.internal:5432/meta_morph
       - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/prod_dags
       - AIRFLOW__WEBSERVER__SECRET_KEY=98UaXRJpmpMLQxApaCw9ZA==
@@ -110,16 +123,23 @@ services:
       - ./prod_dags:/usr/local/airflow/prod_dags
     networks:
       - airflow
+    cpus: 1.0
+    mem_limit: 1024m
     command: >
       /bin/bash -c "
       airflow db upgrade &&
       airflow scheduler"
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
 
   triggerer-prod:
     image: etl-airflow_aa9abc/airflow:latest
     environment:
       - ENV=prod
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__SCHEDULER__MAX_THREADS=4
+      - AIRFLOW__CORE__PARALLELISM=4
+      - AIRFLOW__CORE__DAG_CONCURRENCY=4
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@host.docker.internal:5432/meta_morph
       - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/prod_dags
       - AIRFLOW__WEBSERVER__SECRET_KEY=98UaXRJpmpMLQxApaCw9ZA==
@@ -127,10 +147,14 @@ services:
       - ./prod_dags:/usr/local/airflow/prod_dags
     networks:
       - airflow
+    cpus: 0.5
+    mem_limit: 512m
     command: >
       /bin/bash -c "
       airflow db upgrade &&
       airflow triggerer"
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
 
 volumes:
   spark-data:
