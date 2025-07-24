@@ -6,7 +6,7 @@ from faker import Faker
 from datetime import datetime
 from google.cloud import storage
 import io
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query, HTTPException
 from auth_utils import create_access_token, verify_token
 from my_secrets import USERNAME, PASSWORD, SERVICE_KEY
 
@@ -344,6 +344,97 @@ async def load_customer_data(payload: dict = Depends(verify_token)):
 
     customer_result = df.reset_index().to_dict(orient="records")
     return {"status": 200, "data": customer_result}
+
+# suppliers API to fetch the latest supplier data from the bucket
+@app.get("/v2/suppliers")
+async def load_suppliers_data_v2(
+    date=Query(default=today, description="Date in YYYYMMDD format")
+     ):
+    """
+    API endpoint to load latest supplier data from GCS bucket.
+
+    Returns:
+        dict: Supplier records.
+    """
+    try:
+        df = pd.read_csv(f"gs://meta-morph-flow/{date}/supplier_{date}.csv",
+                         storage_options={
+                                "token": SERVICE_KEY
+                            }
+                         )
+
+        supplier_result = df.to_dict(orient="records")
+        return {"status": 200, "file_date": date, "data": supplier_result}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Files not Found on {date}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={str(e)})
+
+
+# products API to fetch the latest product data from the meta-morph-flow bucket
+@app.get("/v2/products")
+async def load_products_data_v2(
+    date=Query(default=today, description="Date in YYYYMMDD format")
+     ):
+    """
+    API endpoint to load latest product data from GCS bucket.
+
+    Returns:
+        dict: Product records.
+    """
+    try:
+        df = pd.read_csv(f"gs://meta-morph-flow/{date}/product_{date}.csv",
+                         storage_options={
+                                "token": SERVICE_KEY
+                            }
+                         )
+
+        product_result = df.to_dict(orient="records")
+        return {"status": 200, "file_date": date, "data": product_result}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Files not Found on {date}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, description=str(e))
+
+
+# customers API to fetch the latest customer data
+@app.get("/v2/customers")
+async def load_customer_data_v2(
+    payload: dict = Depends(verify_token),
+    date=Query(default=today, description="Date in YYYYMMDD format")
+     ):
+    """
+    API endpoint to load latest customer data from GCS bucket.
+    Requires valid token for access.
+
+    Parameters:
+        payload (dict): Decoded JWT token payload (auto-injected by FastAPI).
+
+    Returns:
+        dict: Customer records.
+    """
+    try:
+        df = pd.read_csv(
+            f"gs://meta-morph-flow/{date}/customer_{date}.csv",
+            storage_options={"token": SERVICE_KEY}
+        )
+
+        customer_result = df.to_dict(orient="records")
+        return {"status": 200, "file_date": date, "data": customer_result}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Files not Found on {date}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, description=str(e))
+
 
 # Setting up the Cors Origin
 app.add_middleware(
