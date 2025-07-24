@@ -273,7 +273,7 @@ async def do_wish():
 
 
 # Generate a token by calling this API
-@app.get("/v1/token")
+@app.get("/token")
 def generate_token():
     """
     API endpoint to generate an access token.
