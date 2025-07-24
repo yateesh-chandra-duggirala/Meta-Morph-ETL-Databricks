@@ -1,4 +1,4 @@
-# docker-compose.override.yml
+# docker-compose.override.yml - For Prod
 
 services:
 
@@ -23,7 +23,7 @@ services:
       - ./data:/opt/spark-data
       - ./jars:/usr/local/airflow/jars
     networks:
-      - airflow
+      - airflow_default
 
   spark-worker:
     image: bitnami/spark:latest
@@ -47,29 +47,37 @@ services:
     depends_on:
       - spark-master
     networks:
-      - airflow
+      - airflow_default
 
-  superset:
-    image: superset-custom:latest
-    container_name: superset
+  webserver:
     environment:
-      - SUPERSET_SECRET_KEY=your_secret_key_here
+      - ENV=prod
     ports:
-      - "8088:8088"
-    volumes:
-      - superset_home:/app/superset_home
+      - "3600:3600"
     networks:
-      - airflow
+      - airflow_default
     command: >
-      /bin/sh -c "
-      superset db upgrade &&
-      superset fab create-admin --username admin --firstname Admin --lastname User --email admin@superset.com --password admin || true &&
-      superset init &&
-      superset run -h 0.0.0.0 -p 8088"
+      /bin/bash -c "
+      rm -rf /tmp/repo &&
+      git clone --branch master https://github.com/yateesh-chandra-duggirala/Meta-Morph-ETL-Databricks.git /tmp/repo &&
+      cp -r /tmp/repo/ETL-Airflow/dags/* /usr/local/airflow/dags/ &&
+      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin &&
+      airflow webserver --port 3600"
+
+  scheduler:
+    environment:
+      - ENV=prod
+    networks:
+      - airflow_default
+
+  triggerer:
+    environment:
+      - ENV=prod
+    networks:
+      - airflow_default
 
 volumes:
   spark-data:
-  superset_home:
 
 networks:
-  airflow:
+  airflow_default:
