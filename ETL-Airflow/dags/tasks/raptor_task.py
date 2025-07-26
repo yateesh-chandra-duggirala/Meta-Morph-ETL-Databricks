@@ -18,16 +18,20 @@ def trigger_raptor():
     raptor_obj.submit_raptor_request(
         source_type='pg_admin',
         source_db='meta_morph',
-        target_type='reporting',
+        # target_type='reporting',
+        target_type='pg_admin',
+        target_db='meta_morph',
         source_sql="""
-                    SELECT * FROM legacy.customer_sales_report
+                    SELECT * FROM legacy.supplier_performance
+                    WHERE "DAY_DT" >= '2025-07-22'
                     """,
         target_sql="""
-                    SELECT * FROM reporting.customer_sales_report
+                    SELECT * FROM dev_legacy.supplier_performance
+                    WHERE "DAY_DT" >= '2025-07-22'
                     """,
         email='yateed1437@gmail.com',
-        output_table_name='customer_sales_report',
-        primary_key='SALE_ID,DAY_DT'
+        output_table_name='supplier_performance',
+        primary_key='DAY_DT,SUPPLIER_ID'
     )
 
     return 'The Comparison Report is sent to the recipient..!'
