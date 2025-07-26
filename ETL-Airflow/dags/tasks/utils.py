@@ -18,7 +18,7 @@ class APIClient:
     Attributes:
     base_url (String): The base URL of the API Requests.
     """
-    def __init__(self, base_url="http://host.docker.internal:8000/v1"):
+    def __init__(self, base_url="http://host.docker.internal:8000"):
         """
         Initializes the API Client with default or Provided base URL.
 
@@ -28,7 +28,7 @@ class APIClient:
         self.base_url = base_url
 
     # Define a method to fetch the data when the API is called
-    def fetch_data(self, api_type: str, auth=False):
+    def fetch_data(self, api_type: str, auth=False, _date: str=None):
         """
         Fetches data from the API Endpoint.
 
@@ -44,6 +44,9 @@ class APIClient:
         """
         try:
             import requests
+            params = {}
+            if _date:
+                params['date'] = _date
 
             # Auth is True means, The API is secured.
             if auth:
@@ -58,15 +61,17 @@ class APIClient:
 
                 # Make the API call using Headers for Authentication
                 response = requests.get(
-                    self.base_url + "/" + api_type,
-                    headers={"Authorization": f"Bearer {token}"}
+                    self.base_url + "/v2/" + api_type,
+                    headers={"Authorization": f"Bearer {token}"},
+                    params=params or None
                 )
 
             else:
 
                 # Fetch the response directly from the API
                 logging.info(f"Fetching the response from {api_type} API")
-                response = requests.get(self.base_url + "/" + api_type)
+                response = requests.get(self.base_url + "/v2/" + api_type,
+                                        params=params or None)
 
             # Return the response as json if the Response is OK
             if response.status_code == 200:
