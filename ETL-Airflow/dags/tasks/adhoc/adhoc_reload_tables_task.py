@@ -2,7 +2,6 @@
 # Import libraries
 from airflow.decorators import task
 from pyspark.sql import Row
-from pyspark.sql.functions import current_date, col
 import logging
 from tasks.utils import (
     get_spark_session,
@@ -60,7 +59,7 @@ def supplier_data_ingestion(env, date, count):
 
     # Populating the legacy version of Suppliers Data
     suppliers_df_lgcy = suppliers_df \
-        .withColumn("DAY_DT", current_date() -  count) \
+        .withColumn("DAY_DT", current_date() - count) \
         .select(
             col("DAY_DT"),
             col("SUPPLIER_ID"),
@@ -539,7 +538,6 @@ def suppliers_performance_ingestion(env, date, cnt):
     return "supplier_performance data ingested successfully!"
 
 
-
 # Create a task that helps in populating Products_Performance
 @task(task_id="m_load_products_performance")
 def product_performance_ingestion(env, date, cnt):
@@ -788,7 +786,7 @@ def customer_sales_report_ingestion(env, date, cnt):
             col("top_selling_product")
         ) \
         .filter(
-            (col("day_dt") == current_date()) &
+            (col("day_dt") == current_date() - cnt) &
             (col("top_selling_product").isNotNull())
         ).distinct()
     data_list = SQ_Shortcut_To_Supplier_Performance.collect()
@@ -861,7 +859,7 @@ def customer_sales_report_ingestion(env, date, cnt):
                     ) \
         .withColumn("sale_date",
                     coalesce(
-                        col("sale_date"), current_date() - 1
+                        col("sale_date"), current_date() - cnt - 1
                     )) \
         .withColumn("sale_year",
                     year(col("sale_date"))

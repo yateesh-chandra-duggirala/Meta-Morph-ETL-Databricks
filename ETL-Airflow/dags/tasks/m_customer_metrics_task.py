@@ -274,7 +274,10 @@ def customer_metrics_upsert(env):
             schema=staging,
             strategy="overwrite"
         )
-        execute_merge(f"{staging}.customer_metrics_stg", f"{legacy}.CUSTOMER_METRICS")
+        execute_merge(
+            f"{staging}.customer_metrics_stg",
+            f"{legacy}.CUSTOMER_METRICS"
+        )
 
     except Exception as e:
 
