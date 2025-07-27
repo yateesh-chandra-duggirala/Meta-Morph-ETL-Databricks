@@ -5,11 +5,12 @@ from tasks.utils import (
     get_spark_session
 )
 
+
 @task
 def test_environment(env):
-    if env == 'prod':   
+    if env == 'prod':
         logging.info('PRODUCTION Environment')
-    else :
+    else:
         logging.info('DEVELOPMENT Environment')
     try:
         spark = get_spark_session()
@@ -19,4 +20,4 @@ def test_environment(env):
         raise
     finally:
         abort_session(spark)
-    return f"Successfully fetched.."
+    return "Successfully fetched.."

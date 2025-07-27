@@ -5,7 +5,16 @@ from airflow.utils.task_group import TaskGroup
 from datetime import datetime
 import pytz
 import os
-from tasks.adhoc.adhoc_reload_tables_task import *
+from tasks.adhoc.adhoc_reload_tables_task import (
+    supplier_data_ingestion,
+    customer_data_ingestion,
+    products_data_ingestion,
+    sales_data_ingestion,
+    suppliers_performance_ingestion,
+    customer_sales_report_ingestion,
+    product_performance_ingestion
+)
+
 
 # Date/count generator
 def freq(today):
@@ -13,6 +22,7 @@ def freq(today):
     for idx, i in enumerate(range(today, today + 5)):
         result.append((str(i), 4 - idx))
     return result
+
 
 @dag(
     dag_id='adhoc_reload_metamorph',
@@ -52,5 +62,6 @@ def ingestion():
         if prev_group:
             prev_group >> group
         prev_group = group
+
 
 ingestion()

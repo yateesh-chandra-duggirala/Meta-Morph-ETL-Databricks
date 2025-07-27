@@ -345,6 +345,7 @@ async def load_customer_data(payload: dict = Depends(verify_token)):
     customer_result = df.reset_index().to_dict(orient="records")
     return {"status": 200, "data": customer_result}
 
+
 # suppliers API to fetch the latest supplier data from the bucket
 @app.get("/v2/suppliers")
 async def load_suppliers_data_v2(

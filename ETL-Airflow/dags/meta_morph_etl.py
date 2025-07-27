@@ -60,7 +60,6 @@ def ingestion():
         {"env": env, "table_name": table} for table in TABLES
     ])
 
-
     # Set the Tasks Dependency
     for upstream in [suppliers, customers, products, sales]:
         for downstream in [supplier_performance,

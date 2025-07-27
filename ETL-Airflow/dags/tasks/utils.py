@@ -28,7 +28,7 @@ class APIClient:
         self.base_url = base_url
 
     # Define a method to fetch the data when the API is called
-    def fetch_data(self, api_type: str, auth=False, _date: str=None):
+    def fetch_data(self, api_type: str, auth=False, _date=None):
         """
         Fetches data from the API Endpoint.
 
@@ -109,7 +109,9 @@ class DuplicateChecker:
         Duplicate Exception if the Duplicates are found.
         """
         logging.info("Checking for the duplicates in the provided Dataset")
-        grouped_df = df.repartition(4, *primary_key_list).groupBy(primary_key_list) \
+        grouped_df = df.repartition(
+            4, *primary_key_list
+        ).groupBy(primary_key_list) \
             .agg(count('*').alias('cnt'))\
             .filter('cnt > 1')
         if grouped_df.limit(1).count() > 0:
@@ -159,18 +161,18 @@ def fetch_env_schema(env):
     if env == 'prod':
         logging.info('PRODUCTION Environment..!')
         result = {
-            "raw" : "raw",
-            "legacy" : "legacy",
-            "staging" : "staging",
-            "gcs_legacy" : "gs://reporting-lgcy"
+            "raw": "raw",
+            "legacy": "legacy",
+            "staging": "staging",
+            "gcs_legacy": "gs://reporting-lgcy"
         }
     else:
         logging.info('DEVELOPMENT Environment..!')
         result = {
-            "raw" : "dev_raw",
-            "legacy" : "dev_legacy",
-            "staging" : "dev_staging",
-            "gcs_legacy" : "gs://dev-reporting-lgcy"
+            "raw": "dev_raw",
+            "legacy": "dev_legacy",
+            "staging": "dev_staging",
+            "gcs_legacy": "gs://dev-reporting-lgcy"
         }
     return result
 
@@ -253,8 +255,11 @@ def write_to_gcs(dataframe, gcs_path, location):
     dataframe (Dataframe): The Spark Dataframe which we want to write
     location (String): The target GCS Location where to write
     """
-    logging.info(f"Authenticating to {gcs_path} to load the data into parquet file..")
-    dataframe.repartition(2).write.mode("append").parquet(f"{gcs_path}/{location}")
+    logging.info(
+        f"Authenticating to {gcs_path} to load the data into parquet file.."
+    )
+    dataframe.repartition(2)\
+        .write.mode("append").parquet(f"{gcs_path}/{location}")
     logging.info(f"Loaded into Parquet File : {location}")
 
 

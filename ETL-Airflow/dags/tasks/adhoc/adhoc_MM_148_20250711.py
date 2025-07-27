@@ -5,7 +5,6 @@ from tasks.utils import (
     abort_session,
     get_spark_session
 )
-from pyspark.sql.functions import col, current_date
 
 
 @task(task_id="m_load_legacy_tables_to_gcs")
