@@ -285,66 +285,68 @@ def generate_token():
     token = create_access_token(data)
     return {"access_token": token}
 
+##############################################################################
+# # # # # DECOMMISSION OF /v1/ Endpoint as a part of MM-168 # # # # # # # # ##
+##############################################################################
+# # suppliers API to fetch the latest supplier data from the bucket
+# @app.get("/v1/suppliers")
+# async def load_suppliers_data():
+#     """
+#     API endpoint to load latest supplier data from GCS bucket.
 
-# suppliers API to fetch the latest supplier data from the bucket
-@app.get("/v1/suppliers")
-async def load_suppliers_data():
-    """
-    API endpoint to load latest supplier data from GCS bucket.
+#     Returns:
+#         dict: Supplier records.
+#     """
+#     df = pd.read_csv(f"gs://meta-morph-flow/{today}/supplier_{today}.csv",
+#                      storage_options={
+#                             "token": SERVICE_KEY
+#                         }
+#                      ).set_index("Supplier Id")
 
-    Returns:
-        dict: Supplier records.
-    """
-    df = pd.read_csv(f"gs://meta-morph-flow/{today}/supplier_{today}.csv",
-                     storage_options={
-                            "token": SERVICE_KEY
-                        }
-                     ).set_index("Supplier Id")
-
-    supplier_result = df.reset_index().to_dict(orient="records")
-    return {"status": 200, "data": supplier_result}
-
-
-# products API to fetch the latest product data from the meta-morph-flow bucket
-@app.get("/v1/products")
-async def load_products_data():
-    """
-    API endpoint to load latest product data from GCS bucket.
-
-    Returns:
-        dict: Product records.
-    """
-    df = pd.read_csv(f"gs://meta-morph-flow/{today}/product_{today}.csv",
-                     storage_options={
-                            "token": SERVICE_KEY
-                        }
-                     ).set_index("Product Id")
-
-    product_result = df.reset_index().to_dict(orient="records")
-    return {"status": 200, "data": product_result}
+#     supplier_result = df.reset_index().to_dict(orient="records")
+#     return {"status": 200, "data": supplier_result}
 
 
-# customers API to fetch the latest customer data
-@app.get("/v1/customers")
-async def load_customer_data(payload: dict = Depends(verify_token)):
-    """
-    API endpoint to load latest customer data from GCS bucket.
-    Requires valid token for access.
+# # products API to fetch latest product data from the meta-morph-flow bucket
+# @app.get("/v1/products")
+# async def load_products_data():
+#     """
+#     API endpoint to load latest product data from GCS bucket.
 
-    Parameters:
-        payload (dict): Decoded JWT token payload (auto-injected by FastAPI).
+#     Returns:
+#         dict: Product records.
+#     """
+#     df = pd.read_csv(f"gs://meta-morph-flow/{today}/product_{today}.csv",
+#                      storage_options={
+#                             "token": SERVICE_KEY
+#                         }
+#                      ).set_index("Product Id")
 
-    Returns:
-        dict: Customer records.
-    """
-    df = pd.read_csv(
-        f"gs://meta-morph-flow/{today}/customer_{today}.csv",
-        storage_options={"token": SERVICE_KEY}
-    ).set_index("Customer Id")
+#     product_result = df.reset_index().to_dict(orient="records")
+#     return {"status": 200, "data": product_result}
 
-    customer_result = df.reset_index().to_dict(orient="records")
-    return {"status": 200, "data": customer_result}
 
+# # customers API to fetch the latest customer data
+# @app.get("/v1/customers")
+# async def load_customer_data(payload: dict = Depends(verify_token)):
+#     """
+#     API endpoint to load latest customer data from GCS bucket.
+#     Requires valid token for access.
+
+#     Parameters:
+#         payload (dict):Decoded JWT token payload (auto-injected by FastAPI).
+
+#     Returns:
+#         dict: Customer records.
+#     """
+#     df = pd.read_csv(
+#         f"gs://meta-morph-flow/{today}/customer_{today}.csv",
+#         storage_options={"token": SERVICE_KEY}
+#     ).set_index("Customer Id")
+
+#     customer_result = df.reset_index().to_dict(orient="records")
+#     return {"status": 200, "data": customer_result}
+##############################################################################
 
 # suppliers API to fetch the latest supplier data from the bucket
 @app.get("/v2/suppliers")
