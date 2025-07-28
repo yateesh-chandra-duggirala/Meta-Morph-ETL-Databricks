@@ -1,4 +1,7 @@
 # docker-compose.override.yml
+######################################################################
+# # # SUPERSET DECOMMISSIONED UNDER MM-170 AND MIGRATED TO PROD # # #
+######################################################################
 
 services:
 
@@ -49,27 +52,27 @@ services:
     networks:
       - airflow
 
-  superset:
-    image: superset-custom:latest
-    container_name: superset
-    environment:
-      - SUPERSET_SECRET_KEY=your_secret_key_here
-    ports:
-      - "8088:8088"
-    volumes:
-      - superset_home:/app/superset_home
-    networks:
-      - airflow
-    command: >
-      /bin/sh -c "
-      superset db upgrade &&
-      superset fab create-admin --username admin --firstname Admin --lastname User --email admin@superset.com --password admin || true &&
-      superset init &&
-      superset run -h 0.0.0.0 -p 8088"
+  # superset:
+  #   image: superset-custom:latest
+  #   container_name: superset
+  #   environment:
+  #     - SUPERSET_SECRET_KEY=your_secret_key_here
+  #   ports:
+  #     - "8088:8088"
+  #   volumes:
+  #     - superset_home:/app/superset_home
+  #   networks:
+  #     - airflow
+  #   command: >
+  #     /bin/sh -c "
+  #     superset db upgrade &&
+  #     superset fab create-admin --username admin --firstname Admin --lastname User --email admin@superset.com --password admin || true &&
+  #     superset init &&
+  #     superset run -h 0.0.0.0 -p 8088"
 
 volumes:
   spark-data:
-  superset_home:
+  # superset_home:
 
 networks:
   airflow:
