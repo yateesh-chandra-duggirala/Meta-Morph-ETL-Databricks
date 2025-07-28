@@ -1,7 +1,11 @@
-FROM apache/superset:latest
+######################################################################
+# # # # # # DECOMMISSIONED UNDER MM-170 AND MIGRATED TO PROD # # # # #
+######################################################################
 
-USER root
+# FROM apache/superset:latest
 
-RUN pip install psycopg2-binary
+# USER root
 
-USER superset
+# RUN pip install psycopg2-binary
+
+# USER superset
