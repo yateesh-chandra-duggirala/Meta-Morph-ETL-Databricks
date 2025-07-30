@@ -1,0 +1,8 @@
+SELECT 
+  "SUPPLIER_ID", 
+  SUM("TOTAL_PRODUCTS_SOLD"),
+  SUM("TOTAL_REVENUE") 
+FROM 
+  legacy.supplier_performance
+GROUP BY 
+  "SUPPLIER_ID"
